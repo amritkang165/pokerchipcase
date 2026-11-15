@@ -32,10 +32,23 @@ import SwiftUI
     /// Combine with `-playerName Du` and `-appearance felt|dark`.
     static let auto = ProcessInfo.processInfo.arguments.contains("-debugTable")
 
+    /// Launch argument `-debugStop lobby|turn|showdown|payout`, with `-debugTable`: where the host stops
+    /// playing by itself, for screenshots. Without it the host starts the game and plays by hand.
+    private static let stop = UserDefaults.standard.string(forKey: "debugStop")
+
     static func autoStart(_ host: TableSession) async {
         fill(host, count: maxSeats)
         for _ in 0..<60 where (host.state?.seats.count ?? 0) < maxSeats { try? await Task.sleep(for: .milliseconds(500)) }
-        if let me = host.me { await host.send(.startTournament(button: me)) }
+        guard stop != "lobby", let me = host.me else { return }
+        await host.send(.startTournament(button: me))
+        guard stop == "showdown" || stop == "payout" else { return }
+        // The host calls like a bot until the first showdown, then pays the first eligible player per pot.
+        while let state = host.state, state.phase != .showdown {
+            if let legal = host.legalActions, !host.isSending { await host.act(action(legal, style: .call)) }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        guard stop == "payout", let pots = host.state?.pots else { return }
+        await host.send(.resolveShowdown(winners: pots.map { [$0.eligible.contains(me) ? me : $0.eligible[0]] }))
     }
 
     /// What a bot does on its turn.
