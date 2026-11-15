@@ -1,12 +1,33 @@
 import PokerCore
 
 /// The next thing the dealer has to deal.
-public enum DealerHint: Equatable, Sendable { case dealHand, dealFlop, dealTurn, dealRiver, dealRest }
+public enum DealerHint: Equatable, Sendable {
+    /// Deal each player their hole cards.
+    case dealHand
+    /// Deal the three flop cards.
+    case dealFlop
+    /// Deal the turn card.
+    case dealTurn
+    /// Deal the river card.
+    case dealRiver
+    /// Deal all community cards still missing; nobody can bet any more.
+    case dealRest
+}
 
 /// A preset raise offered as a shortcut, with the resulting total bet of the round in `raiseTo`.
 public struct QuickPick: Equatable, Sendable {
-    public enum Kind: Equatable, Sendable { case halfPot, pot, allIn }
+    /// Which preset a ``QuickPick`` is.
+    public enum Kind: Equatable, Sendable {
+        /// Raise by half the pot.
+        case halfPot
+        /// Raise by the whole pot.
+        case pot
+        /// Bet the whole stack.
+        case allIn
+    }
+    /// Label to show on the button; ``raiseTo`` holds the amount.
     public var kind: Kind
+    /// Total bet of the round after the raise, not the extra chips.
     public var raiseTo: Chips
 }
 

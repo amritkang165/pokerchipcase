@@ -6,22 +6,49 @@ import PokerNet
 
 /// A local operation that failed; `message` is the error's `localizedDescription`.
 public struct SessionProblem: Equatable, Sendable {
-    public enum Action: Sendable { case save, delete, send, listen }
+    /// The kind of operation that failed.
+    public enum Action: Sendable {
+        /// Writing the host save file or the guest's seat ticket.
+        case save
+        /// Deleting the save file or seat ticket.
+        case delete
+        /// Sending a command to the host.
+        case send
+        /// Restarting the host listener.
+        case listen
+    }
+    /// The operation that failed.
     public var action: Action
+    /// `localizedDescription` of the underlying error.
     public var message: String
 }
 
 /// How the session's connection to the table is doing.
-public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, reconnecting, failed(ClientFailure) }
+public enum ConnectionStatus: Equatable, Sendable {
+    /// The first connection attempt is under way.
+    case connecting
+    /// The host has welcomed this device.
+    case connected
+    /// The connection dropped and the client is retrying.
+    case reconnecting
+    /// The client gave up for good; create a new session to try again.
+    case failed(ClientFailure)
+}
 
 /// One device's seat at a table: the host device runs the `TableHost` and joins it over loopback,
 /// a guest only has a `TableClient`. The app reads the state from here and sends commands through it.
 @MainActor @Observable public final class TableSession {
+    /// Name of the table, as shown in the lobby.
     public let tableName: String
+    /// Code guests enter to connect.
     public let code: TableCode
+    /// The latest game state; nil until the host has sent one.
     public private(set) var state: GameState?
+    /// This device's player ID; nil until the host's `welcome` arrives.
     public private(set) var me: PlayerID?
+    /// Connection health; `.connecting` until the first `welcome`.
     public private(set) var connection: ConnectionStatus = .connecting
+    /// True while a command awaits its ack; further `send` calls are ignored then.
     public private(set) var isSending = false
     /// Number of `state` events handled; lets tests wait for one that changes nothing.
     private(set) var stateEvents = 0
@@ -98,6 +125,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         return session
     }
 
+    /// Joins the table at `endpoint`; pass the `token` of a saved ticket to reclaim a seat. Returns at once, `connection` reports progress.
     public static func join(endpoint: NWEndpoint, tableName: String, code: TableCode, name: String,
                             token: String? = nil, ticketFile: SaveFile<SeatTicket> = .seat) async -> TableSession {
         let client = TableClient(endpoint: endpoint, code: code, name: name, token: token)
@@ -108,6 +136,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         return session
     }
 
+    /// Sends a command and waits for the ack; a refusal lands in `rejection`, other failures in `problem`.
     public func send(_ command: Command) async {
         guard !isSending else { return }  // double tap
         isSending = true
@@ -127,6 +156,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         }
     }
 
+    /// Plays `action` for this device's own player; does nothing before `me` is known.
     public func act(_ action: Action) async {
         guard let me else { return }
         await send(.act(player: me, action: action))
