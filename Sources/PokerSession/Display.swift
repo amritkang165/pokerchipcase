@@ -34,7 +34,8 @@ public struct QuickPick: Equatable, Sendable {
 extension GameState {
     /// What the dealer has to deal right now; nil if nothing.
     public var dealerHint: DealerHint? {
-        switch phase {
+        if config.digitalCards { return nil }
+        return switch phase {
         case .betting where !seats.contains { $0.acted }:
             switch street {
             case .preflop: .dealHand

@@ -39,18 +39,6 @@ private func chipsInPlay(_ g: Game) -> Chips {
     #expect(computePots([a, b, c]) == [Pot(amount: 300, eligible: ["B", "C"]), Pot(amount: 500, eligible: ["C"])])
 }
 
-/// SplitMix64: deterministic randomness for reproducible tournaments.
-private struct SeededRNG: RandomNumberGenerator {
-    var state: UInt64
-    mutating func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z >> 31)
-    }
-}
-
 @Test func chipsAreConservedInRandomTournaments() throws {
     for seed in 0..<300 {
         var rng = SeededRNG(state: UInt64(seed))

@@ -28,11 +28,14 @@ public struct TournamentConfig: Codable, Equatable, Sendable {
     public var startingStack: Chips
     /// Blind levels in play order; the last one never ends.
     public var levels: [BlindLevel]
+    /// True when the app deals the cards: hole cards, board and an automatic showdown.
+    public var digitalCards: Bool
 
     /// Creates a config; ``Command/startTournament(button:)`` rejects it unless it is valid.
-    public init(startingStack: Chips, levels: [BlindLevel]) {
+    public init(startingStack: Chips, levels: [BlindLevel], digitalCards: Bool = false) {
         self.startingStack = startingStack
         self.levels = levels
+        self.digitalCards = digitalCards
     }
 
     /// At least one level, every level `0 < smallBlind <= bigBlind` with a positive duration, a positive stack.
@@ -88,6 +91,8 @@ public struct Seat: Codable, Equatable, Sendable {
     public var mayRaise = true
     /// Final rank; nil while the player is still in the tournament (and for the winner).
     public var eliminatedRank: Int?
+    /// The player's two cards in a digital game; empty with real cards and for eliminated players.
+    public var holeCards: [Card] = []
 
     /// Seats a player who has not bet yet.
     public init(id: PlayerID, name: String, stack: Chips) {
@@ -171,6 +176,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public var toActIndex: Int?
     /// Main pot first; filled when the hand reaches showdown, empty otherwise.
     public var pots: [Pot] = []
+    /// Community cards dealt so far in a digital game; empty with real cards.
+    public var board: [Card] = []
+    /// Cards not yet dealt in a digital game, drawn from the front; empty with real cards.
+    public var deck: [Card] = []
     /// Blind level timer.
     public var clock = BlindClock()
     /// Increases with every change (undo too); clients send it back so late double taps get rejected.

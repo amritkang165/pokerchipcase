@@ -28,7 +28,12 @@ extension GameState {
     }
 
     /// Eliminated seats count as folded, so all hand logic only has to check `folded`.
-    mutating func startHand() {
+    mutating func startHand<R: RandomNumberGenerator>(using rng: inout R) {
+        if config.digitalCards {
+            deck = Card.fullDeck.shuffled(using: &rng)
+            board = []
+            for i in seats.indices { seats[i].holeCards = seats[i].isEliminated ? [] : draw(2) }
+        }
         phase = .betting
         street = .preflop
         pots = []
@@ -166,6 +171,7 @@ extension GameState {
         case .river: return enterShowdown()
         }
         street = nextStreet
+        if config.digitalCards { board += draw(nextStreet == .flop ? 3 : 1) }
         currentBet = 0
         lastRaiseSize = currentLevel.bigBlind
         for j in seats.indices {
@@ -177,6 +183,7 @@ extension GameState {
     }
 
     mutating func enterShowdown() {
+        if config.digitalCards { board += draw(5 - board.count) }
         phase = .showdown
         toActIndex = nil
         pots = []
@@ -245,10 +252,10 @@ extension GameState {
         }
     }
 
-    mutating func startNextHand() {
+    mutating func startNextHand<R: RandomNumberGenerator>(using rng: inout R) {
         buttonIndex = nextActive(after: buttonIndex!)
         handNumber += 1
-        startHand()
+        startHand(using: &rng)
     }
 
     /// Removes a player from the running tournament; their chips are forfeited.
