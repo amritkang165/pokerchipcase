@@ -1,6 +1,7 @@
 #if DEBUG
 import Network
 import PokerCore
+import PokerNet
 import PokerSession
 import SwiftUI
 
@@ -27,7 +28,46 @@ import SwiftUI
         return legal.canCheck ? .check : .call
     }
 
+    /// Launch argument `-debugLongGame`: build a 10-player tournament 200 hands in, time the save, then host it.
+    static let long = ProcessInfo.processInfo.arguments.contains("-debugLongGame")
+
+    /// A table with the host and 9 more players, played to `hands` with every hand going to showdown
+    /// (worst case for the save file). The winner rotates so nobody goes broke early.
+    static func longGame(hands: Int, hostName: String, tableName: String) throws -> HostSnapshot {
+        var snapshot = HostSnapshot.newTable(hostName: hostName, tableName: tableName, config: .relaxed)
+        let host = snapshot.game.state.hostID
+        let now = Date()  // One date, so the blinds never rise.
+        for name in names { try snapshot.game.apply(.join(player: UUID().uuidString, name: name), by: host, at: now) }
+        try snapshot.game.apply(.startTournament(button: host), by: host, at: now)
+        while snapshot.game.state.handNumber <= hands, snapshot.game.state.phase != .finished {
+            let state = snapshot.game.state
+            switch state.phase {
+            case .betting:
+                guard let i = state.toActIndex, let legal = state.legalActions(for: state.seats[i].id) else { return snapshot }
+                try snapshot.game.apply(.act(player: state.seats[i].id, action: action(legal, style: .call)), by: state.seats[i].id, at: now)
+            case .showdown:
+                let winners = state.pots.map { [$0.eligible[state.handNumber % $0.eligible.count]] }
+                try snapshot.game.apply(.resolveShowdown(winners: winners), by: host, at: now)
+            case .handComplete:
+                try snapshot.game.apply(.startNextHand, by: host, at: now)
+            default:
+                return snapshot
+            }
+        }
+        return snapshot
+    }
+
+    /// Prints the history length, file size and the time of one `SaveFile.host` save and load.
+    static func reportSaveTimes(_ snapshot: HostSnapshot) {
+        let file = SaveFile<HostSnapshot>.host
+        let save = ContinuousClock().measure { try? file.save(snapshot) }
+        let load = ContinuousClock().measure { _ = file.load() }
+        let size = (try? file.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        print("debugLongGame: history=\(snapshot.game.history.count) bytes=\(size) save=\(save) load=\(load)")
+    }
+
     /// Joins up to `count` bots into free seats, with names not yet seated.
+    // ponytail: names already launched but not yet seated (async join) are not excluded, so tapping "Add bots" twice quickly can reuse a name. Ceiling: a duplicate bot name in a debug build. Upgrade: a static pending-names set that fill inserts into and a failed join removes from.
     static func fill(_ host: TableSession, count: Int, speed: BotSpeed = .fast, style: BotStyle = .call) {
         let seated = host.state?.seats.map(\.name) ?? []
         let free = max(0, maxSeats - seated.count)
