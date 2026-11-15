@@ -59,10 +59,9 @@ struct RoundTable: View {
         }
         .aspectRatio(1, contentMode: .fit)
         // From the screen height, not the space left over: that changes with the phase and
-        // the dealer hint, and the table would grow and shrink with it. The reserve fits the
-        // tallest rest of the screen: header, stack and the action bar with its raise slider.
-        // ponytail: fixed reserve, measured on an iPhone SE; measure the rest if it ever overflows.
-        .containerRelativeFrame(.vertical) { height, _ in height - 340 }
+        // the dealer hint, and the table would grow and shrink with it. The share leaves room for
+        // the tallest rest of the screen on an iPhone SE: header, stack and the raise slider.
+        .containerRelativeFrame(.vertical) { height, _ in height * 0.43 }
         // The layout constants assume at most this size; larger text would overlap the seats.
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
