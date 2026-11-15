@@ -35,6 +35,8 @@ PokerCore holds the pure game logic: a ``Game`` applies ``Command`` values to a 
 ### Cards
 
 - ``Card``
+- ``HandValue``
+- ``evaluate(_:)``
 
 ### Wire types
 
