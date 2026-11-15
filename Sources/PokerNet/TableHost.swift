@@ -17,6 +17,8 @@ public actor TableHost {
     private var listenerGone: AsyncStream<Never>?
     /// Port of the last successful start; nil after `stop()`.
     private var port: NWEndpoint.Port?
+    /// The most recent `start`; the next one waits for it.
+    private var lastStart: Task<NWEndpoint.Port, Error>?
     private var channels: [UUID: MessageChannel] = [:]
     private var bound: [UUID: PlayerID] = [:]
     private let helloTimeout: Duration
@@ -36,6 +38,16 @@ public actor TableHost {
 
     /// Starts listening (stopping a previous listener first) and returns the bound port.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
+        // Each start waits for the previous one, so two restarts cannot race for the port (#71).
+        let task = Task { [lastStart] in
+            _ = await lastStart?.result
+            return try await bind(port: port)
+        }
+        lastStart = task
+        return try await task.value
+    }
+
+    private func bind(port: NWEndpoint.Port) async throws -> NWEndpoint.Port {
         await cancelListener()
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
         listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
@@ -172,6 +184,8 @@ public actor TableHost {
             welcome(hello, from: id, requestID: messageID)
         case let .command(request):
             handle(request, messageID: messageID, from: id)
+        case .ping:
+            send(.pong, to: id, envelopeID: messageID)
         }
     }
 

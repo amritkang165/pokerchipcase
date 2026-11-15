@@ -57,6 +57,8 @@ public struct CommandRequest: Codable, Equatable, Sendable {
 public enum ClientMessage: Equatable, Sendable {
     case hello(Hello)
     case command(CommandRequest)
+    /// Heartbeat; the host answers with ``ServerMessage/pong``.
+    case ping
 }
 
 /// A message from the host to a client.
@@ -65,6 +67,8 @@ public enum ServerMessage: Equatable, Sendable {
     case ack(Ack)
     case state(GameState)
     case error(String)
+    /// Answer to ``ClientMessage/ping``, with the ping's envelope `id`.
+    case pong
 }
 
 /// Machine-readable codes sent as the payload of `ServerMessage.error`.
@@ -100,6 +104,7 @@ public enum Wire {
         switch message {
         case let .hello(p): try envelope("hello", p, id)
         case let .command(p): try envelope("command", p, id)
+        case .ping: try envelope("ping", Empty(), id)
         }
     }
 
@@ -109,6 +114,7 @@ public enum Wire {
         case let .ack(p): try envelope("ack", p, id)
         case let .state(p): try envelope("state", p, id)
         case let .error(p): try envelope("error", p, id)
+        case .pong: try envelope("pong", Empty(), id)
         }
     }
 
@@ -117,6 +123,7 @@ public enum Wire {
         switch h.type {
         case "hello": return (h.id, .hello(try payload(data)))
         case "command": return (h.id, .command(try payload(data)))
+        case "ping": return (h.id, .ping)
         default: throw WireError.unknownType(h.type)
         }
     }
@@ -128,6 +135,7 @@ public enum Wire {
         case "ack": return (h.id, .ack(try payload(data)))
         case "state": return (h.id, .state(try payload(data)))
         case "error": return (h.id, .error(try payload(data)))
+        case "pong": return (h.id, .pong)
         default: throw WireError.unknownType(h.type)
         }
     }
@@ -143,6 +151,9 @@ public enum Wire {
         var id: UUID
         var payload: P
     }
+
+    /// Payload `{}` of messages without content.
+    private struct Empty: Encodable {}
 
     private struct Header: Decodable {
         var v: Int

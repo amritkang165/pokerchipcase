@@ -86,6 +86,14 @@ Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet 
 - `raiseTo` with `amount == allInTo` and `allIn` are always equivalent, even below the minimum raise. An all-in that goes above `currentBet` still requires `mayRaise`.
 - **Fold** is always allowed.
 
+### `ping` – heartbeat
+
+```json
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":1}
+```
+
+Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, also before `hello`; it does not replace `hello`.
+
 ## Host → Client
 
 ### `welcome` – reply to `hello`
@@ -126,6 +134,14 @@ The payload is a `GameState`. Sent to all clients after every change. The most i
 
 Clients only display what the last `state` says and never change it themselves.
 
+### `pong` – heartbeat answer
+
+```json
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":1}
+```
+
+The envelope `id` equals the `ping`'s `id`.
+
 ### `error`
 
 ```json
@@ -156,6 +172,8 @@ Client                          Host
   | -- command ----------------> |
   | <-------------------- state  |   (to everyone)
   | <---------------------- ack  |
+  | -- ping -------------------> |   (every 5 s)
+  | <--------------------- pong  |
 ```
 
 On success the host sends the new `state` before the `ack`, so a client that waits for the `ack` already knows the new `version`.
@@ -168,7 +186,8 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 
 - Enable TCP keepalive (the iOS app uses 2 s idle, 2 s interval, 3 probes) so a vanished host is noticed within seconds.
 - If no answer to a `command` arrives within 10 s, drop the connection and reconnect with the token.
-- If a connection attempt has not reached `welcome` within 10 s, drop it and try again. A Bonjour resolve or TLS handshake can hang without ever reporting an error.
+- If nothing at all (any message type) arrives for 10 s while connected, drop the connection and reconnect with the token. TCP keepalive alone misses a host app that is suspended while its TCP stack still answers. An older host answers `ping` with `malformed`; that counts as an answer. Do not count time your own app was suspended.
+- If a connection attempt has not reached `welcome` within 10 s, drop it and try again. Double the wait after each attempt that timed out (10, 20, 40 s, at most 60 s) and start again at 10 s after a `welcome`. A Bonjour resolve or TLS handshake can hang without ever reporting an error, and a slow peer-to-peer handshake can need more than 10 s.
 - After `versionMismatch`, `tableFull`, `gameInProgress`, `removed`, `tableClosed` or `replaced`, do not reconnect automatically.
 - Any other `error` before `welcome` answers your `hello`, so the host cannot serve this client (for example an older host that answers `malformed` to a newer `hello`). Stop and treat it like `versionMismatch` instead of waiting for a `welcome` that never comes.
 - Treat a `bad_record_mac` alert during the TLS handshake as a wrong code (do not retry). Retry every other failure, before or after the handshake: a host that is suspended or shuts down mid-handshake ends the connection with a reset or another TLS error.
