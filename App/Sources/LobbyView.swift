@@ -9,6 +9,11 @@ struct LobbyView: View {
     /// The order just dragged, shown until the host's state with it arrives, so the row does not jump back.
     @State private var moved: [PlayerID]?
     @State private var nearby = NearbyTables()
+    #if DEBUG
+    @AppStorage("debugBotCount") private var botCount = 9
+    @AppStorage("debugBotSpeed") private var botSpeed = BotSpeed.fast
+    @AppStorage("debugBotStyle") private var botStyle = BotStyle.call
+    #endif
 
     init(session: TableSession, state: GameState) {
         self.session = session
@@ -68,11 +73,19 @@ struct LobbyView: View {
                         Task { await session.send(.startTournament(button: button)) }
                     }
                     .disabled(state.seats.count < 2 || session.isSending)
-                    #if DEBUG
-                    Button("Add bots") { DebugBots.fill(session, seated: state.seats.count) }
-                        .disabled(state.seats.count >= maxSeats)
-                    #endif
                 }
+                #if DEBUG
+                Section("Debug bots") {
+                    let free = maxSeats - state.seats.count
+                    Stepper("Bots: \(min(max(1, free), botCount))", value: $botCount, in: 1...max(1, free))
+                    Picker("Speed", selection: $botSpeed) { ForEach(BotSpeed.allCases, id: \.self) { Text($0.label) } }
+                        .pickerStyle(.segmented)
+                    Picker("Style", selection: $botStyle) { ForEach(BotStyle.allCases, id: \.self) { Text($0.label) } }
+                        .pickerStyle(.segmented)
+                    Button("Add bots") { DebugBots.fill(session, count: min(max(1, free), botCount), speed: botSpeed, style: botStyle) }
+                        .disabled(free <= 0)
+                }
+                #endif
             } else {
                 Section { Text("Waiting for \(state.seat(state.hostID)?.name ?? "the host") to start") }
             }
