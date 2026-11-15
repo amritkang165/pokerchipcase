@@ -70,7 +70,12 @@ struct StartView: View {
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
         #if DEBUG
-        .task { if DebugBots.auto, !name.isEmpty { host(.newTable(hostName: name, tableName: defaultTableName, config: .quick)) } }
+        .task {
+            guard DebugBots.auto, !name.isEmpty else { return }
+            var config = TournamentConfig.quick
+            config.digitalCards = UserDefaults.standard.bool(forKey: "digitalCards")
+            host(.newTable(hostName: name, tableName: defaultTableName, config: config))
+        }
         .task {
             guard DebugBots.long, !DebugBots.longRan, !name.isEmpty else { return }
             DebugBots.longRan = true
@@ -165,6 +170,7 @@ private struct CreateTableSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var tableName = ""
     @State private var preset = 0
+    @AppStorage("digitalCards") private var digitalCards = false
 
     private var finalName: String {
         let trimmed = tableName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -182,6 +188,7 @@ private struct CreateTableSheet: View {
                     Picker("Blinds", selection: $preset) {
                         ForEach(TournamentConfig.presets.indices, id: \.self) { Text(TournamentConfig.presets[$0].name).tag($0) }
                     }
+                    Toggle("Digital cards", isOn: $digitalCards)
                 }
                 .themedRow()
             }
@@ -191,7 +198,9 @@ private struct CreateTableSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
                         dismiss()
-                        onCreate(finalName, TournamentConfig.presets[preset].config)
+                        var config = TournamentConfig.presets[preset].config
+                        config.digitalCards = digitalCards
+                        onCreate(finalName, config)
                     }
                     .disabled(busy || tooLong)
                 }

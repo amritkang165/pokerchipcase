@@ -35,7 +35,7 @@ struct LobbyView: View {
                     VStack(spacing: 4) {
                         Text("Table code").font(.subheadline).foregroundStyle(theme.muted)
                         Text(session.code.digits).font(.system(size: 48, weight: .bold, design: .monospaced))
-                        Text("\(state.config.startingStack) chips · \(minutes) min levels").foregroundStyle(theme.muted)
+                        Text("\(state.config.startingStack) chips · \(minutes) min levels\(state.config.digitalCards ? " · digital cards" : "")").foregroundStyle(theme.muted)
                     }
                     .frame(maxWidth: .infinity)
                 }

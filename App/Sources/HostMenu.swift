@@ -7,6 +7,7 @@ import SwiftUI
 enum HostConfirm: Equatable {
     case remove(PlayerID, String)
     case undo
+    case changeWinner
 }
 
 /// Menu content for the host; the caller provides the surrounding menu and the confirmation dialog.
@@ -24,6 +25,12 @@ struct HostMenu: View {
     private var removable: [Seat] {
         guard state.phase == .betting || state.phase == .handComplete else { return [] }
         return state.seats.filter { $0.id != state.hostID && !$0.isEliminated }
+    }
+
+    /// After an automatic payout with revealed hands, undo goes back to the showdown to pick winners by hand.
+    private var canChangeWinner: Bool {
+        state.config.digitalCards && (state.phase == .handComplete || state.phase == .finished)
+            && state.seats.contains(where: state.isRevealed)
     }
 
     var body: some View {
@@ -48,6 +55,9 @@ struct HostMenu: View {
                 }
             }
         }
+        if canChangeWinner {
+            Button("Change winner", systemImage: "trophy") { pending = .changeWinner }
+        }
         Button("Undo last change", systemImage: "arrow.uturn.backward") { pending = .undo }
     }
 
@@ -62,6 +72,7 @@ extension View {
         let title: String = switch item {
         case let .remove(_, name): "Remove \(name)? Their chips are forfeited."
         case .undo: "Undo the last change for everyone?"
+        case .changeWinner: "Undo the payout and pick the winners by hand?"
         case nil: ""
         }
         return confirmationDialog(
@@ -71,6 +82,7 @@ extension View {
             switch item {
             case let .remove(id, _): Button("Remove", role: .destructive) { Task { await session.send(.removePlayer(player: id)) } }
             case .undo: Button("Undo", role: .destructive) { Task { await session.send(.undo) } }
+            case .changeWinner: Button("Change winner", role: .destructive) { Task { await session.send(.undo) } }
             case nil: EmptyView()
             }
         }
