@@ -109,9 +109,15 @@ struct StartView: View {
         reload()
     }
 
+    /// Reads both files off the main actor; a long tournament's save takes a noticeable time to decode.
     private func reload() {
-        savedGame = SaveFile.host.load().flatMap { $0.isResumable ? $0 : nil }
-        ticket = SaveFile.seat.load()
+        Task {
+            let (game, seat) = await Task.detached {
+                (SaveFile.host.load().flatMap { $0.isResumable ? $0 : nil }, SaveFile.seat.load())
+            }.value
+            savedGame = game
+            ticket = seat
+        }
     }
 
     private func host(_ snapshot: HostSnapshot) {
