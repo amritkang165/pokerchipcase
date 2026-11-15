@@ -15,6 +15,17 @@ extension GameState {
         [.showdown, .handComplete, .finished].contains(phase) && !seat.folded && seats.count { !$0.folded } >= 2
     }
 
+    /// The state as `viewer` may see it: the deck is empty, and hole cards stay only on the viewer's own seat
+    /// and on revealed seats. A nil or unknown viewer sees no private cards.
+    public func redacted(for viewer: PlayerID?) -> GameState {
+        var copy = self
+        copy.deck = []
+        for i in copy.seats.indices where copy.seats[i].id != viewer && !isRevealed(seats[i]) {
+            copy.seats[i].holeCards = []
+        }
+        return copy
+    }
+
     /// The best five-card hand of the seat's hole cards and the board; nil unless it holds 2 cards and the board 5.
     public func handValue(of seat: Seat) -> HandValue? {
         seat.holeCards.count == 2 && board.count == 5 ? evaluate(seat.holeCards + board) : nil
