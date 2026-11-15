@@ -199,4 +199,13 @@ struct HostLobbyTests {
         #expect(try await again.welcome().player == w.player)
         await restored.stop()
     }
+
+    @Test func concurrentStartsOnTheSamePortBothSucceed() async throws {
+        let (host, port) = try await startHost()
+        async let a = host.start(port: port)
+        async let b = host.start(port: port)
+        #expect(try await [a, b] == [port, port])
+        #expect(await host.isListening)
+        await host.stop()
+    }
 }
