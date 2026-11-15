@@ -23,10 +23,12 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
     public private(set) var me: PlayerID?
     public private(set) var connection: ConnectionStatus = .connecting
     public private(set) var isSending = false
+    /// Number of `state` events handled; lets tests wait for one that changes nothing.
+    private(set) var stateEvents = 0
     /// Reason of the last rejected command; cleared by `send` and by the next state newer than the one
     /// it was rejected on.
     public private(set) var rejection: Rejection?
-    /// `state.version` the host had when it rejected the command behind `rejection`.
+    /// `state.version` the host had at or after it rejected the command behind `rejection`.
     private var rejectedAt = 0
     /// Last failed save, delete, send or listener restart; cleared when that action works again
     /// (`.send`: by the next `send`).
@@ -201,6 +203,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
             record(.save) { try ticketFile?.save(SeatTicket(tableName: tableName, code: code, name: name, token: welcome.token)) }
         case let .state(new):
             state = new
+            stateEvents += 1
             if new.version > rejectedAt { rejection = nil }
         case .connectionLost:
             connection = .reconnecting

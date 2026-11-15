@@ -48,11 +48,11 @@ struct SessionTests {
         await ben.send(.startTournament(button: ben.me!))
         #expect(ben.rejection == .notHost)
         // The rejoin broadcasts the same state version again.
+        let seen = ben.stateEvents
         await anna.tableHost!.disconnectAll()
         try await eventually { ben.connection == .reconnecting }
         try await eventually { ben.connection == .connected }
-        // The state follows the welcome on the same stream; give it time to be handled.
-        try await Task.sleep(for: .milliseconds(200))
+        try await eventually { ben.stateEvents > seen }
         #expect(ben.rejection == .notHost)
     }
 
