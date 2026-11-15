@@ -5,7 +5,7 @@ import PokerNet
 import PokerSession
 import SwiftUI
 
-/// Debug builds only: fills the host's lobby with in-process guests that check or call on their turn,
+/// Debug builds only: fills the host's lobby with in-process guests that check, call or raise on their turn,
 /// so a full table can be played on one simulator.
 @MainActor enum DebugBots {
     private static let names = ["foo", "bar", "baz", "qux", "quux", "corge", "grault", "Maximilian-Alexander", "garply"]
@@ -30,6 +30,8 @@ import SwiftUI
 
     /// Launch argument `-debugLongGame`: build a 10-player tournament 200 hands in, time the save, then host it.
     static let long = ProcessInfo.processInfo.arguments.contains("-debugLongGame")
+    /// Set once the long game ran, so StartView reappearing does not rebuild it.
+    static var longRan = false
 
     /// A table with the host and 9 more players, played to `hands` with every hand going to showdown
     /// (worst case for the save file). The winner rotates so nobody goes broke early.
@@ -58,9 +60,11 @@ import SwiftUI
     }
 
     /// Prints the history length, file size and the time of one `SaveFile.host` save and load.
-    static func reportSaveTimes(_ snapshot: HostSnapshot) {
+    static func reportSaveTimes(_ snapshot: HostSnapshot) throws {
         let file = SaveFile<HostSnapshot>.host
-        let save = ContinuousClock().measure { try? file.save(snapshot) }
+        var failure: Error?
+        let save = ContinuousClock().measure { do { try file.save(snapshot) } catch { failure = error } }
+        if let failure { throw failure }
         let load = ContinuousClock().measure { _ = file.load() }
         let size = (try? file.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         print("debugLongGame: history=\(snapshot.game.history.count) bytes=\(size) save=\(save) load=\(load)")
