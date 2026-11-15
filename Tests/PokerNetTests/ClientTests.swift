@@ -318,13 +318,29 @@ struct ClientTests {
         await fake.dropAll()
     }
 
-    @Test func hangingConnectIsRetried() async throws {
+    @Test func connectTimeoutBacksOff() {
+        let waits = (0...4).map { TableClient.backoff(.seconds(10), failures: $0, cap: .seconds(60)) }
+        #expect(waits == [.seconds(10), .seconds(20), .seconds(40), .seconds(60), .seconds(60)])
+        #expect(TableClient.backoff(.seconds(10), failures: .max, cap: .seconds(60)) == .seconds(60))
+    }
+
+    @Test func hangingConnectIsRetriedUntilTheHostAnswers() async throws {
         let silent = try SilentListener()
         let port = try await silent.start()
-        let (ben, _) = await client(port, connectTimeout: .milliseconds(300))
+        let (ben, events) = await client(port, connectTimeout: .milliseconds(300))
         try await eventually { await silent.connections.count >= 2 }
-        await ben.disconnect()
+        #expect(await ben.connectTimeouts >= 1)
         await silent.stop()
+        // The silent listener lets go of the port asynchronously.
+        var host: TableHost?
+        for _ in 0..<50 where host == nil {
+            host = try? await startHost(port: port).0
+            if host == nil { try await Task.sleep(for: .milliseconds(100)) }
+        }
+        _ = try await events.first(timeout: .seconds(10)) { $0.welcome != nil }
+        #expect(await ben.connectTimeouts == 0)
+        await ben.disconnect()
+        await host?.stop()
     }
 
     @Test func disconnectStopsRetrying() async throws {

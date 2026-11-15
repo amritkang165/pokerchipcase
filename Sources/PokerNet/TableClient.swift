@@ -40,6 +40,7 @@ public actor TableClient {
     private let retryDelay: Duration
     private let ackTimeout: Duration
     private let connectTimeout: Duration
+    private let maxConnectTimeout: Duration
     private var channel: MessageChannel?
     private var connected = false
     private var running = false
@@ -47,12 +48,18 @@ public actor TableClient {
     /// Bumped for every new connection attempt and on disconnect, so stale channel callbacks are ignored.
     private var generation = 0
     private var pending: [UUID: CheckedContinuation<AckResult, Error>] = [:]
+    /// Attempts in a row that the connect timeout dropped; reset on `welcome`. Fast failures do not count.
+    private(set) var connectTimeouts = 0
+    /// Sleeps until the current attempt's connect timeout; cancelled once the attempt ends or is welcomed.
+    private var connectTimer: Task<Void, Never>?
 
     /// `ackTimeout`: how long `send` waits before treating the connection as dead and reconnecting.
     /// `connectTimeout`: how long a connection attempt may take to reach `welcome` before it is retried.
+    /// The wait doubles after each attempt in a row that timed out, up to `maxConnectTimeout`,
+    /// and starts again at `connectTimeout` after a `welcome`.
     public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil,
                 retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10),
-                connectTimeout: Duration = .seconds(10)) {
+                connectTimeout: Duration = .seconds(10), maxConnectTimeout: Duration = .seconds(60)) {
         self.endpoint = endpoint
         self.code = code
         self.name = name
@@ -60,6 +67,7 @@ public actor TableClient {
         self.retryDelay = retryDelay
         self.ackTimeout = ackTimeout
         self.connectTimeout = connectTimeout
+        self.maxConnectTimeout = maxConnectTimeout
         (events, continuation) = AsyncStream.makeStream()
     }
 
@@ -113,15 +121,24 @@ public actor TableClient {
             await self?.channelEnded(failure, attempt: attempt)
         }
         // A connection can hang in `.preparing` (Bonjour resolve, TLS handshake) without ever failing.
-        Task { [weak self, connectTimeout] in
-            try? await Task.sleep(for: connectTimeout)
+        let wait = Self.backoff(connectTimeout, failures: connectTimeouts, cap: maxConnectTimeout)
+        connectTimer = Task { [weak self] in
+            do { try await Task.sleep(for: wait) } catch { return }
             await self?.connectTimedOut(attempt)
         }
         channel.start()
     }
 
+    /// `base` doubled `failures` times, at most `cap`. The exponent stops at 16 so it cannot overflow.
+    static func backoff(_ base: Duration, failures: Int, cap: Duration) -> Duration {
+        min(base * (1 << min(failures, 16)), cap)
+    }
+
     private func connectTimedOut(_ attempt: Int) async {
         guard attempt == generation, running, !connected else { return }
+        connectTimeouts += 1
+        // Otherwise `dropChannel()` would cancel this very task and cut `reconnect()`'s retry delay short.
+        connectTimer = nil
         await reconnect()
     }
 
@@ -148,6 +165,9 @@ public actor TableClient {
         case let .welcome(welcome):
             token = welcome.token
             connected = true
+            connectTimeouts = 0
+            connectTimer?.cancel()
+            connectTimer = nil
             continuation.yield(.welcome(welcome))
         case let .state(state):
             lastState = state
@@ -204,6 +224,8 @@ public actor TableClient {
 
     private func dropChannel() {
         connected = false
+        connectTimer?.cancel()
+        connectTimer = nil
         channel?.cancel()
         channel = nil
         for waiting in pending.values { waiting.resume(throwing: ClientError.connectionLost) }
