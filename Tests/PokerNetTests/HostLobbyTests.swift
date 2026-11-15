@@ -17,6 +17,16 @@ private func snapshot(guests: Int, started: Bool = false) throws -> HostSnapshot
 
 @Suite(.timeLimit(.minutes(1)))
 struct HostLobbyTests {
+    @Test func pingIsAnsweredWithPongEvenBeforeHello() async throws {
+        let (host, port) = try await startHost()
+        let ben = try await RawClient.connect(port)
+        let id = UUID()
+        ben.send(.ping, id: id)
+        let reply = try await ben.nextEnvelope { $0 == .pong }
+        #expect(reply.id == id)
+        await host.stop()
+    }
+
     @Test func helloJoinsLobbyAndBroadcastsState() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)
@@ -188,5 +198,14 @@ struct HostLobbyTests {
         again.send(hello("Ben", token: w.token))
         #expect(try await again.welcome().player == w.player)
         await restored.stop()
+    }
+
+    @Test func concurrentStartsOnTheSamePortBothSucceed() async throws {
+        let (host, port) = try await startHost()
+        async let a = host.start(port: port)
+        async let b = host.start(port: port)
+        #expect(try await [a, b] == [port, port])
+        #expect(await host.isListening)
+        await host.stop()
     }
 }

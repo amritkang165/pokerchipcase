@@ -1,8 +1,10 @@
 import Foundation
 
 extension BlindClock {
+    /// True while the clock is stopped by ``Command/pauseClock``.
     public var isPaused: Bool { pausedRemaining != nil }
 
+    /// Seconds left in the current level at `now`; 0 when the clock has not started.
     public func remaining(at now: Date) -> TimeInterval {
         if let pausedRemaining { return pausedRemaining }
         guard let levelEndsAt else { return 0 }

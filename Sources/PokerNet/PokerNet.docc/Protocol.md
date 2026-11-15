@@ -64,7 +64,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 | Command | Fields | Who may send it |
 |---|---|---|
 | `join` | `player`, `name` | host only (the host issues it itself after `hello`) |
-| `removePlayer` | `player` | host, not for itself |
+| `removePlayer` | `player` | host, not for itself; in the lobby also a guest for their own seat (to leave the table). The host answers a guest's own removal with no `ack`: it closes the connection with the `removed` error under a new envelope `id`, not the command's. |
 | `arrangeSeats` | `order` (all player IDs) | host, lobby only |
 | `startTournament` | `button` | host, at least 2 players |
 | `act` | `player`, `action` | the player when it is their turn; the host additionally `fold`/`check` for others |
@@ -86,6 +86,14 @@ Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet 
 - `raiseTo` with `amount == allInTo` and `allIn` are always equivalent, even below the minimum raise. An all-in that goes above `currentBet` still requires `mayRaise`.
 - **Fold** is always allowed.
 
+### `ping` – heartbeat
+
+```json
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":1}
+```
+
+Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, also before `hello`; it does not replace `hello`.
+
 ## Host → Client
 
 ### `welcome` – reply to `hello`
@@ -102,7 +110,7 @@ Keep the token secret and store it for reconnects.
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":1}
 ```
 
-`payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}` (see `Rejection`).
+`payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). The exception is a guest's own `removePlayer` (see above). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}` (see `Rejection`).
 
 Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidConfig`, `invalidShowdown`, `nothingToUndo`, `staleState`.
 
@@ -125,6 +133,14 @@ The payload is a `GameState`. Sent to all clients after every change. The most i
 | `hostID`, `handNumber` | |
 
 Clients only display what the last `state` says and never change it themselves.
+
+### `pong` – heartbeat answer
+
+```json
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":1}
+```
+
+The envelope `id` equals the `ping`'s `id`.
 
 ### `error`
 
@@ -156,6 +172,8 @@ Client                          Host
   | -- command ----------------> |
   | <-------------------- state  |   (to everyone)
   | <---------------------- ack  |
+  | -- ping -------------------> |   (every 5 s)
+  | <--------------------- pong  |
 ```
 
 On success the host sends the new `state` before the `ack`, so a client that waits for the `ack` already knows the new `version`.
@@ -168,7 +186,8 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 
 - Enable TCP keepalive (the iOS app uses 2 s idle, 2 s interval, 3 probes) so a vanished host is noticed within seconds.
 - If no answer to a `command` arrives within 10 s, drop the connection and reconnect with the token.
-- If a connection attempt has not reached `welcome` within 10 s, drop it and try again. A Bonjour resolve or TLS handshake can hang without ever reporting an error.
+- If nothing at all (any message type) arrives for 10 s while connected, drop the connection and reconnect with the token. TCP keepalive alone misses a host app that is suspended while its TCP stack still answers. An older host answers `ping` with `malformed`; that counts as an answer. Do not count time your own app was suspended.
+- If a connection attempt has not reached `welcome` within 10 s, drop it and try again. Double the wait after each attempt that timed out (10, 20, 40 s, at most 60 s) and start again at 10 s after a `welcome`. A Bonjour resolve or TLS handshake can hang without ever reporting an error, and a slow peer-to-peer handshake can need more than 10 s.
 - After `versionMismatch`, `tableFull`, `gameInProgress`, `removed`, `tableClosed` or `replaced`, do not reconnect automatically.
 - Any other `error` before `welcome` answers your `hello`, so the host cannot serve this client (for example an older host that answers `malformed` to a newer `hello`). Stop and treat it like `versionMismatch` instead of waiting for a `welcome` that never comes.
 - Treat a `bad_record_mac` alert during the TLS handshake as a wrong code (do not retry). Retry every other failure, before or after the handshake: a host that is suspended or shuts down mid-handshake ends the connection with a reset or another TLS error.

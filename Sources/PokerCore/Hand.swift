@@ -1,7 +1,11 @@
 extension GameState {
+    /// ID of the player on the button; nil before the first hand.
     public var dealerID: PlayerID? { buttonIndex.map { seats[$0].id } }
+    /// The blind level in effect; it changes when the next hand starts after a level expired.
     public var currentLevel: BlindLevel { config.levels[clock.levelIndex] }
+    /// All chips bet in this hand so far, in every pot.
     public var potTotal: Chips { seats.reduce(0) { $0 + $1.handBet } }
+    /// Smallest total bet a raise must reach this round.
     public var minRaiseTo: Chips { currentBet + lastRaiseSize }
 
     /// Seats still in the tournament, in seat order, starting at `viewer`
@@ -69,6 +73,7 @@ extension GameState {
         return n
     }
 
+    /// What `player` may do now; nil unless it is their turn.
     public func legalActions(for player: PlayerID) -> LegalActions? {
         guard phase == .betting, let i = toActIndex, seats[i].id == player else { return nil }
         let s = seats[i]
@@ -266,10 +271,12 @@ extension GameState {
 
 /// What the player to act may do right now, with the amounts in chips.
 public struct LegalActions: Equatable, Sendable {
+    /// True when nothing is owed, so `check` is legal.
     public var canCheck: Bool
     /// Additional chips needed to call; 0 when checking is possible.
     public var callAmount: Chips
     /// nil = raising not allowed.
     public var minRaiseTo: Chips?
+    /// Largest total bet (the whole stack); nil = raising not allowed.
     public var maxRaiseTo: Chips?
 }

@@ -5,8 +5,10 @@ import PokerNet
 
 /// A JSON file holding one value. Plain JSONEncoder/JSONDecoder, so dates round-trip exactly.
 public struct SaveFile<Value: Codable & Sendable>: Sendable {
+    /// Location of the file.
     public let url: URL
 
+    /// Creates a handle; the file is not touched until used.
     public init(url: URL) { self.url = url }
 
     /// nil if missing or unreadable.
@@ -31,18 +33,24 @@ public struct SaveFile<Value: Codable & Sendable>: Sendable {
 }
 
 extension SaveFile where Value == HostSnapshot {
+    /// The host's resumable table, in Application Support.
     public static var host: Self { .init(url: .applicationSupportDirectory.appending(path: "host.json")) }
 }
 
 extension SaveFile where Value == SeatTicket {
+    /// A guest's seat ticket, in Application Support.
     public static var seat: Self { .init(url: .applicationSupportDirectory.appending(path: "seat.json")) }
 }
 
 /// What a guest needs to take its seat back after the app was killed.
 public struct SeatTicket: Codable, Equatable, Sendable {
+    /// Bonjour name of the table.
     public var tableName: String
+    /// Code of the table.
     public var code: TableCode
+    /// Name the guest joined with.
     public var name: String
+    /// Reconnect token from the table's `welcome`.
     public var token: String
 
     /// The table's Bonjour service, resolved anew on every connect.

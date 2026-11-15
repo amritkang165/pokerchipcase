@@ -49,6 +49,22 @@ import Testing
     #expect(throws: Rejection.illegalAction) { try g.apply(.removePlayer(player: "A"), by: "A", at: t0) }
 }
 
+@Test func guestMayRemoveOnlyTheirOwnSeatInTheLobby() throws {
+    var g = Game(hostID: "A", hostName: "Anna", config: .relaxed)
+    try g.apply(.join(player: "B", name: "Ben"), by: "A", at: t0)
+    try g.apply(.join(player: "C", name: "Cem"), by: "A", at: t0)
+    #expect(throws: Rejection.notHost) { try g.apply(.removePlayer(player: "C"), by: "B", at: t0) }
+    try g.apply(.removePlayer(player: "B"), by: "B", at: t0)
+    #expect(g.state.seats.map(\.id) == ["A", "C"])
+}
+
+@Test func guestCannotRemoveTheirOwnSeatOnceStarted() throws {
+    var g = Game(hostID: "A", hostName: "Anna", config: .relaxed)
+    try g.apply(.join(player: "B", name: "Ben"), by: "A", at: t0)
+    try g.apply(.startTournament(button: "A"), by: "A", at: t0)
+    #expect(throws: Rejection.notHost) { try g.apply(.removePlayer(player: "B"), by: "B", at: t0) }
+}
+
 @Test func presetsStartAtTenTwenty() {
     #expect(TournamentConfig.relaxed.levels.first == BlindLevel(smallBlind: 10, bigBlind: 20, duration: 1200))
     #expect(TournamentConfig.quick.levels.first?.duration == 600)

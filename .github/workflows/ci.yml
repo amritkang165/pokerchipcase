@@ -58,6 +58,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: SonarCloud scan
+        id: sonar
         if: env.HAS_SONAR_TOKEN == 'true'
         uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
         env:
@@ -65,7 +66,7 @@ jobs:
       # Sonar way rates new code smells only by their debt ratio, so it passes even
       # critical ones; accepted and false-positive issues do not count
       - name: Fail on open SonarCloud issues
-        if: ${{ !cancelled() && env.HAS_SONAR_TOKEN == 'true' }}
+        if: ${{ !cancelled() && env.HAS_SONAR_TOKEN == 'true' && steps.sonar.conclusion != 'skipped' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SCOPE: ${{ github.event_name == 'pull_request' && format('pullRequest={0}', github.event.number) || format('branch={0}', github.ref_name) }}

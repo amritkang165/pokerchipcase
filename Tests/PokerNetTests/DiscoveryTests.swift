@@ -35,7 +35,7 @@ struct DiscoveryTests {
         let table = try await lists.first(timeout: discoveryTimeout) { $0.contains { $0.name == name } }.first { $0.name == name }!
         browser.stop()
 
-        let ben = TableClient(endpoint: table.endpoint, code: code4711, name: "Ben", retryDelay: .milliseconds(100))
+        let ben = TableClient(endpoint: table.endpoint, code: code4711, name: "Ben", timing: .init(retryDelay: .milliseconds(100)))
         let events = EventRecorder(ben.events)
         await ben.connect()
         _ = try await events.first(timeout: discoveryTimeout) { if case .welcome = $0 { true } else { false } }
@@ -48,7 +48,7 @@ struct DiscoveryTests {
     @Test func wrongCodeViaBonjourFailsWithoutRetry() async throws {
         let (host, name) = try await advertisedHost()
         let ben = TableClient(endpoint: .service(name: name, type: Wire.serviceType, domain: "local.", interface: nil),
-                              code: TableCode("0815")!, name: "Ben", retryDelay: .milliseconds(100))
+                              code: TableCode("0815")!, name: "Ben", timing: .init(retryDelay: .milliseconds(100)))
         let events = EventRecorder(ben.events)
         await ben.connect()
         _ = try await events.first(timeout: discoveryTimeout) { $0 == .failed(.wrongCode) }

@@ -30,11 +30,17 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
     #expect(try Wire.decodeClient(data).message == .hello(Hello(name: "Anna", token: nil)))
 }
 
+@Test func pingAndPongGoldenJSON() throws {
+    #expect(json(try Wire.encode(ClientMessage.ping, id: id1)) == #"{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":1}"#)
+    #expect(json(try Wire.encode(ServerMessage.pong, id: id1)) == #"{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":1}"#)
+}
+
 @Test func clientRoundTrip() throws {
     for message: ClientMessage in [
         .hello(Hello(name: "Ben", token: "t")),
         .command(CommandRequest(command: .resolveShowdown(winners: [["A", "B"]]), stateVersion: 3)),
         .command(CommandRequest(command: .undo, stateVersion: 0)),
+        .ping,
     ] {
         let decoded = try Wire.decodeClient(Wire.encode(message, id: id1))
         #expect(decoded.id == id1 && decoded.message == message)
@@ -49,6 +55,7 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
         .welcome(Welcome(player: "B", token: "secret")),
         .ack(Ack(id: id1, result: .ok)),
         .error("broken"),
+        .pong,
     ] {
         let decoded = try Wire.decodeServer(Wire.encode(message, id: id1))
         #expect(decoded.id == id1 && decoded.message == message)
