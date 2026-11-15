@@ -64,7 +64,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 | Command | Fields | Who may send it |
 |---|---|---|
 | `join` | `player`, `name` | host only (the host issues it itself after `hello`) |
-| `removePlayer` | `player` | host, not for itself; in the lobby also a guest for their own seat (to leave the table). The host answers a guest's own removal with the `removed` error instead of an `ack` and closes the connection. |
+| `removePlayer` | `player` | host, not for itself; in the lobby also a guest for their own seat (to leave the table). The host answers a guest's own removal with no `ack`: it closes the connection with the `removed` error under a new envelope `id`, not the command's. |
 | `arrangeSeats` | `order` (all player IDs) | host, lobby only |
 | `startTournament` | `button` | host, at least 2 players |
 | `act` | `player`, `action` | the player when it is their turn; the host additionally `fold`/`check` for others |
@@ -102,7 +102,7 @@ Keep the token secret and store it for reconnects.
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":1}
 ```
 
-`payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}` (see `Rejection`).
+`payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). The exception is a guest's own `removePlayer` (see above). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}` (see `Rejection`).
 
 Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidConfig`, `invalidShowdown`, `nothingToUndo`, `staleState`.
 

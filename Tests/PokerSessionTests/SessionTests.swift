@@ -205,6 +205,7 @@ struct SessionTests {
         // Ben's own state too: without it Ben does not know the table is in the lobby and sends nothing.
         try await eventually { anna.state?.seats.count == 2 && ben.state?.seats.count == 2 }
         #expect(await ben.leave())
+        #expect(ben.connection != .failed(.removed))
         try await eventually { anna.state?.seats.count == 1 }
         #expect(await anna.tableHost!.snapshot.tokens.count == 1)
     }
