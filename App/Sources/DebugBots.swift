@@ -93,9 +93,13 @@ import SwiftUI
         let free = max(0, maxSeats - seated.count)
         for name in names.shuffled().filter({ !seated.contains($0) }).prefix(min(count, free)) {
             Task {
-                // Bonjour, like a real guest; a throwaway ticket file so the real seat ticket stays untouched.
+                // Loopback, like the host itself: on a device, resolving our own Bonjour service took
+                // so long that the bots joined minutes late, all at once. Real guests still test Bonjour.
+                // A throwaway ticket file, so the real seat ticket stays untouched.
+                let endpoint: NWEndpoint = host.port.map { .hostPort(host: "127.0.0.1", port: $0) }
+                    ?? .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil)
                 let bot = await TableSession.join(
-                    endpoint: .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil),
+                    endpoint: endpoint,
                     tableName: host.tableName, code: host.code, name: name,
                     ticketFile: SaveFile(url: .temporaryDirectory.appending(path: "bot-\(name).json")))
                 let play = Task {
