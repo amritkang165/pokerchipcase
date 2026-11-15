@@ -100,9 +100,13 @@ public enum ConnectionStatus: Equatable, Sendable {
                             port: NWEndpoint.Port = .any) async throws -> TableSession {
         guard let token = snapshot.hostToken, let name = snapshot.game.state.seat(snapshot.game.state.hostID)?.name
         else { throw CocoaError(.fileReadCorruptFile) }
-        // Saved before anything else, so a crash in the lobby is resumable too.
-        let previous = saveFile.load()
-        try saveFile.save(snapshot)
+        // Saved before anything else, so a crash in the lobby is resumable too. Off the main actor: a long
+        // tournament's file takes a noticeable fraction of a second to read and write.
+        let previous = try await Task.detached {
+            let old = saveFile.load()
+            try saveFile.save(snapshot)
+            return old
+        }.value
         // Save results go to the session's `problem`; the host calls onChange on its own actor.
         let (saves, saved) = AsyncStream<(any Error)?>.makeStream()
         let host = TableHost(snapshot: snapshot, onChange: {

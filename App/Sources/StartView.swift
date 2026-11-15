@@ -15,6 +15,8 @@ struct StartView: View {
     @State private var failed = false
     @State private var deleteFailed = false
     @State private var busy = false
+    /// The save files have been read; until then Create could not ask before replacing a saved game.
+    @State private var loaded = false
     @State private var showSettings = false
 
     private var name: String { playerName.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -46,8 +48,8 @@ struct StartView: View {
                     }
                     Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
-                .disabled(name.isEmpty || busy)
-                if busy { ProgressView().frame(maxWidth: .infinity) }
+                .disabled(name.isEmpty || busy || !loaded)
+                if busy || !loaded { ProgressView().frame(maxWidth: .infinity) }
                 Section("Nearby tables") {
                     if nearby.localNetworkDenied { LocalNetworkNotice() }
                     if nearby.tables.isEmpty { Text("Looking for tables…").foregroundStyle(.secondary) }
@@ -109,9 +111,16 @@ struct StartView: View {
         reload()
     }
 
+    /// Reads both files off the main actor; a long tournament's save takes a noticeable time to decode.
     private func reload() {
-        savedGame = SaveFile.host.load().flatMap { $0.isResumable ? $0 : nil }
-        ticket = SaveFile.seat.load()
+        Task {
+            let (game, seat) = await Task.detached {
+                (SaveFile.host.load().flatMap { $0.isResumable ? $0 : nil }, SaveFile.seat.load())
+            }.value
+            savedGame = game
+            ticket = seat
+            loaded = true
+        }
     }
 
     private func host(_ snapshot: HostSnapshot) {
