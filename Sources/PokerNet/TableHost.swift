@@ -267,7 +267,7 @@ public actor TableHost {
     }
 
     private func broadcastState() {
-        for id in bound.keys { send(.state(snapshot.game.state), to: id) }
+        for (id, player) in bound { send(.state(snapshot.game.state.redacted(for: player)), to: id) }
     }
 }
 

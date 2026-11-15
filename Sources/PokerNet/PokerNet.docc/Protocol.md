@@ -1,4 +1,4 @@
-# PokerChipCase Protocol (version 1)
+# PokerChipCase Protocol (version 2)
 
 This document describes everything a compatible client (for example an Android app) needs to join a PokerChipCase table. The types in `Sources/PokerCore/` (for example `ClientMessage`, `ServerMessage` and `GameState`) and the golden tests in `Tests/PokerCoreTests/WireTests.swift` are authoritative.
 
@@ -22,7 +22,7 @@ A wrong table code makes the TLS handshake fail: the host cannot verify the clie
 Every message, in both directions:
 
 ```json
-{"id":"<UUID>","payload":<payload>,"type":"<type>","v":1}
+{"id":"<UUID>","payload":<payload>,"type":"<type>","v":2}
 ```
 
 - `v` – protocol version. Messages with a different version are rejected.
@@ -48,7 +48,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 ### `hello` – join or reconnect
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":2}
 ```
 
 Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
@@ -56,7 +56,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 ### `command` – every game command
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"command":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"stateVersion":7},"type":"command","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"command":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"stateVersion":7},"type":"command","v":2}
 ```
 
 `stateVersion` is `version` from the last `state` received. If it no longer matches the host's, the command is rejected with `staleState`. This discards double taps that arrive after the state has changed.
@@ -68,10 +68,10 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 | `arrangeSeats` | `order` (all player IDs) | host, lobby only |
 | `startTournament` | `button` | host, at least 2 players |
 | `act` | `player`, `action` | the player when it is their turn; the host additionally `fold`/`check` for others |
-| `resolveShowdown` | `winners`: one list of player IDs per pot, in the same order as `state.pots`; each list non-empty, no duplicates, only IDs from `eligible` | dealer of the hand or host |
+| `resolveShowdown` | `winners`: one list of player IDs per pot, in the same order as `state.pots`; each list non-empty, no duplicates, only IDs from `eligible`. With `config.digitalCards` the host pays out by itself; the command is only needed after an `undo` returned the game to `showdown`. | dealer of the hand or host |
 | `startNextHand` | – | dealer of the hand or host |
 | `pauseClock`, `resumeClock` | – | host |
-| `undo` | – | host |
+| `undo` | – (in a digital game the first undo after a showdown returns to `showdown`, before the payout) | host |
 
 Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet in this betting round; a bet if nobody has bet yet), `allIn`.
 
@@ -89,7 +89,7 @@ Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet 
 ### `ping` – heartbeat
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":2}
 ```
 
 Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, also before `hello`; it does not replace `hello`.
@@ -99,7 +99,7 @@ Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, al
 ### `welcome` – reply to `hello`
 
 ```json
-{"id":"…","payload":{"player":"B","token":"…"},"type":"welcome","v":1}
+{"id":"…","payload":{"player":"B","token":"…"},"type":"welcome","v":2}
 ```
 
 Keep the token secret and store it for reconnects.
@@ -107,7 +107,7 @@ Keep the token secret and store it for reconnects.
 ### `ack` – reply to a `command`
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":2}
 ```
 
 `payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). The exception is a guest's own `removePlayer` (see above). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}` (see `Rejection`).
@@ -116,28 +116,39 @@ Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`,
 
 ### `state` – complete table state
 
-The payload is a `GameState`. Sent to all clients after every change. The most important fields of `payload`:
+The payload is a `GameState`. Sent to all clients after every change; each client gets its own copy without the other players' hidden cards (see "Cards" below). The most important fields of `payload`:
 
 | Field | Meaning |
 |---|---|
 | `phase` | `lobby`, `betting`, `showdown`, `handComplete`, `finished` |
 | `street` | `preflop`, `flop`, `turn`, `river` – last street reached |
-| `seats[]` | in table order: `id`, `name`, `stack`, `roundBet`, `handBet`, `folded`, `allIn`, `acted`, `mayRaise`, `stackAtHandStart`, `eliminatedRank` (absent while still playing) |
+| `seats[]` | in table order: `id`, `name`, `stack`, `roundBet`, `handBet`, `folded`, `allIn`, `acted`, `mayRaise`, `stackAtHandStart`, `eliminatedRank` (absent while still playing), `holeCards` (see below) |
 | `buttonIndex` | index of the dealer in `seats` |
 | `toActIndex` | index of the player to act (absent when nobody is to act) |
 | `currentBet`, `lastRaiseSize` | highest bet of the round; minimum raise = `currentBet + lastRaiseSize` |
 | `pots[]` | showdown only: `amount`, `eligible` (player IDs) |
 | `clock` | `levelIndex`, `levelEndsAt` (date) or `pausedRemaining` (seconds) |
-| `config` | `startingStack`, `levels[]` with `smallBlind`, `bigBlind`, `duration` |
+| `seats[].holeCards[]` | the receiver's own cards, and at showdown the hands still in play; otherwise empty |
+| `board[]` | community cards dealt so far; empty with real cards |
+| `deck` | always `[]` for clients |
+| `config` | `startingStack`, `levels[]` with `smallBlind`, `bigBlind`, `duration`, `digitalCards` (true when the app deals the cards) |
 | `version` | increases with every change; send it back as `stateVersion` in `command` |
 | `hostID`, `handNumber` | |
 
 Clients only display what the last `state` says and never change it themselves.
 
+### Cards
+
+A card is a two-character string: rank, then suit, for example `"Ah"` or `"Tc"`. Rank characters are `23456789TJQKA`, suit characters `c`, `d`, `h`, `s`.
+
+Hole cards of a seat are revealed to everyone when the phase is `showdown`, `handComplete` or `finished`, at least 2 seats have not folded, and the seat has not folded. After a fold win nothing is revealed, and a player removed mid-hand is never revealed. Otherwise each client sees only its own `holeCards`.
+
+`state` carries no hand names. Clients derive the hand name ("Flush", "Full house", …) themselves from the revealed cards and the board.
+
 ### `pong` – heartbeat answer
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":2}
 ```
 
 The envelope `id` equals the `ping`'s `id`.
@@ -145,7 +156,7 @@ The envelope `id` equals the `ping`'s `id`.
 ### `error`
 
 ```json
-{"id":"…","payload":"versionMismatch","type":"error","v":1}
+{"id":"…","payload":"versionMismatch","type":"error","v":2}
 ```
 
 `payload` is a code; the app translates it into text. If the error answers a message whose envelope header could be read, the error's envelope `id` equals that message's `id`, so a client waiting for an `ack` can treat it as the answer.
@@ -180,7 +191,7 @@ On success the host sends the new `state` before the `ack`, so a client that wai
 
 ## Versions
 
-If the format changes incompatibly, `v` increases. A receiver treats any message with a different `v` as `versionMismatch` and stops retrying.
+If the format changes incompatibly, `v` increases. A receiver treats any message with a different `v` as `versionMismatch` and stops retrying. Version 2 added the card fields (`config.digitalCards`, `board`, `deck`, `seats[].holeCards`).
 
 ## Recommendations for clients
 
@@ -200,4 +211,5 @@ The protocol is built for a home game among friends, not for hostile networks:
 
 - Plain PSK has no forward secrecy. Anyone who records one handshake can brute-force the 4-digit code offline and then decrypt that traffic.
 - Everyone at the table knows the code. A player who records another player's traffic can read that player's token and take over their seat.
+- The host device and its save file hold every card, including the deck. A player who records another player's handshake and brute-forces the code can read that player's hole cards.
 - The code mainly prevents joining the wrong table by accident and keeps casual observers out.
