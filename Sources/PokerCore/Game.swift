@@ -53,7 +53,7 @@ extension GameState {
             seats = order.map { id in seats.first { $0.id == id }! }
 
         case let .removePlayer(player):
-            guard actor == hostID else { throw .notHost }
+            guard actor == hostID || (phase == .lobby && actor == player) else { throw .notHost }
             guard player != hostID else { throw .illegalAction }
             guard let i = index(of: player), !seats[i].isEliminated else { throw .unknownPlayer }
             if phase == .lobby {

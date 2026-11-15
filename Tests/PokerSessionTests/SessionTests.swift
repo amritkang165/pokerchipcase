@@ -198,6 +198,41 @@ struct SessionTests {
         #expect(file.load() == nil)
     }
 
+    @Test func guestLeavingTheLobbyFreesTheSeat() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let ben = await guestSession(anna)
+        // Ben's own state too: without it Ben does not know the table is in the lobby and sends nothing.
+        try await eventually { anna.state?.seats.count == 2 && ben.state?.seats.count == 2 }
+        #expect(await ben.leave())
+        try await eventually { anna.state?.seats.count == 1 }
+        #expect(await anna.tableHost!.snapshot.tokens.count == 1)
+    }
+
+    @Test func guestLeavingMidTournamentKeepsTheSeat() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let ben = await guestSession(anna)
+        try await eventually { anna.state?.seats.count == 2 && ben.state?.seats.count == 2 }
+        await anna.send(.startTournament(button: anna.me!))
+        try await eventually { ben.state?.phase == .betting }
+        #expect(await ben.leave())
+        try await eventually { await anna.tableHost!.connectedPlayers.count == 1 }
+        #expect(anna.state?.seats.count == 2)
+    }
+
+    @Test func guestLeavingWhileDisconnectedStillLeaves() async throws {
+        let anna = try await hostSession()
+        let tickets: SaveFile<SeatTicket> = tempFile()
+        let ben = await guestSession(anna, ticketFile: tickets)
+        try await eventually { ben.state?.seats.count == 2 && tickets.load() != nil }
+        await anna.tableHost!.stop()
+        try await eventually { ben.connection == .reconnecting }
+        #expect(await ben.leave())
+        #expect(tickets.load() == nil)
+        await anna.leave()
+    }
+
     @Test func guestIsToldWhenTheHostEndsTheTable() async throws {
         let anna = try await hostSession()
         let tickets: SaveFile<SeatTicket> = tempFile()

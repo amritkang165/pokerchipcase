@@ -141,11 +141,23 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         }
     }
 
-    /// Disconnects; the host also ends the table for everyone. Deletes this device's save file and
-    /// returns false if that failed (`problem` says why; calling `leave()` again retries).
+    /// Disconnects; a guest in the lobby gives up their seat first, the host also ends the table for everyone.
+    /// Deletes this device's save file and returns false if that failed (`problem` says why; calling `leave()`
+    /// again retries).
     @discardableResult public func leave() async -> Bool {
         eventTask?.cancel()
         saveTask?.cancel()
+        if !isHost, state?.phase == .lobby, let me {
+            // A silent host must not hold the leave back for the whole ackTimeout: disconnecting fails the send.
+            let giveUp = Task { [client] in
+                try await Task.sleep(for: .seconds(2))
+                await client.disconnect()
+            }
+            // ponytail: one attempt. A change racing the leave rejects it as staleState and the seat stays
+            // until the host removes it; retry once on that rejection if it shows.
+            _ = try? await client.send(.removePlayer(player: me))
+            giveUp.cancel()
+        }
         await client.disconnect()
         await tableHost?.end()
         return record(.delete) { try saveFile?.delete(); try ticketFile?.delete() }

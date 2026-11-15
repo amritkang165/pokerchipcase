@@ -64,7 +64,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 | Command | Fields | Who may send it |
 |---|---|---|
 | `join` | `player`, `name` | host only (the host issues it itself after `hello`) |
-| `removePlayer` | `player` | host, not for itself |
+| `removePlayer` | `player` | host, not for itself; in the lobby also a guest for their own seat (to leave the table). The host answers a guest's own removal with the `removed` error instead of an `ack` and closes the connection. |
 | `arrangeSeats` | `order` (all player IDs) | host, lobby only |
 | `startTournament` | `button` | host, at least 2 players |
 | `act` | `player`, `action` | the player when it is their turn; the host additionally `fold`/`check` for others |
