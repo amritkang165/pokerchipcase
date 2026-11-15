@@ -334,7 +334,7 @@ struct ClientTests {
         let (ben, events) = await client(port, ackTimeout: .milliseconds(500), pingInterval: .milliseconds(100))
         _ = try await events.first { $0.welcome != nil }
         try await Task.sleep(for: .milliseconds(1500))
-        #expect(!(await events.all.contains(.connectionLost)))
+        #expect(await events.all.allSatisfy { $0.welcome != nil || $0.state != nil })
         await ben.disconnect()
         await host.stop()
     }
@@ -347,7 +347,7 @@ struct ClientTests {
         let (ben, events) = await client(try await fake.start(), ackTimeout: .milliseconds(500), pingInterval: .milliseconds(100))
         _ = try await events.first { $0.welcome != nil }
         try await Task.sleep(for: .milliseconds(1500))
-        #expect(!(await events.all.contains(.connectionLost)))
+        #expect(await events.all.allSatisfy { $0.welcome != nil || $0.state != nil })
         await ben.disconnect()
         await fake.dropAll()
     }
