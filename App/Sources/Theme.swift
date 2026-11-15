@@ -23,7 +23,10 @@ enum Appearance: String, CaseIterable {
 
 /// Look tokens. The layout is the same for every theme; only these values change.
 struct Theme: Sendable {
+    /// The room around the table.
     var background: Color
+    /// Ground of the screens away from the table: lists, forms and sheets.
+    var screen: Color
     /// Inner and outer stop of the table's radial gradient.
     var surface: [Color]
     var rim: Color
@@ -38,12 +41,12 @@ struct Theme: Sendable {
     var chips: [Color]
 
     static let felt = Theme(
-        background: Color(hex: 0x3b2414), surface: [Color(hex: 0x2f8a4e), Color(hex: 0x1d5e33)], rim: Color(hex: 0x6b3f1d),
+        background: Color(hex: 0x3b2414), screen: Color(hex: 0x1d5e33), surface: [Color(hex: 0x2f8a4e), Color(hex: 0x1d5e33)], rim: Color(hex: 0x6b3f1d),
         accent: Color(hex: 0xe8c15a), formTint: Color(hex: 0x9a6b00), seat: .black.opacity(0.45), text: Color(hex: 0xf3e9d2), muted: Color(hex: 0xc9b99a),
         fold: Color(hex: 0x7a2a1f), chips: [Color(hex: 0xc0392b), Color(hex: 0x2c3e50), Color(hex: 0x27ae60)])
 
     static let dark = Theme(
-        background: Color(hex: 0x0d0f14), surface: [Color(hex: 0x171a22), Color(hex: 0x171a22)], rim: Color(hex: 0x232733),
+        background: Color(hex: 0x0d0f14), screen: Color(hex: 0x0d0f14), surface: [Color(hex: 0x171a22), Color(hex: 0x171a22)], rim: Color(hex: 0x232733),
         accent: Color(hex: 0x38e1b0), formTint: Color(hex: 0x38e1b0), seat: Color(hex: 0x232733), text: Color(hex: 0xe8eaf0), muted: Color(hex: 0x8a90a2),
         fold: Color(hex: 0x2a2e3a), chips: [Color(hex: 0x38e1b0), Color(hex: 0x5b6cff), Color(hex: 0xff9f68)])
 }
@@ -71,11 +74,11 @@ private struct ThemedScreen: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scrollContentBackground(.hidden)
-            .background(theme.background.ignoresSafeArea())
+            .background(theme.screen.ignoresSafeArea())
             // No foregroundStyle: in a Form it overrides button tint and the destructive role's red.
             // The dark scheme's label colors are readable on both grounds.
             .tint(theme.accent)
-            .toolbarBackground(theme.background, for: .navigationBar)
+            .toolbarBackground(theme.screen, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .environment(\.colorScheme, .dark)
     }
