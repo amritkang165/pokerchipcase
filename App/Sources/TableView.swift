@@ -27,6 +27,7 @@ struct TableView: View {
             if session.me == state.dealerID, let hint = state.dealerHint {
                 Text(hint.message).font(.headline).frame(maxWidth: .infinity).padding(8)
                     .background(theme.accent.opacity(0.25), in: .rect(cornerRadius: 8))
+                    .padding(.horizontal)
             }
             // One view for every phase, so it keeps its identity and animates into the showdown.
             RoundTable(state: state, viewer: session.me, seatState: seatState, onTapSeat: onTapSeat)
@@ -40,9 +41,9 @@ struct TableView: View {
             }
             // The table keeps its size, so the slack goes here and the bar stays at the bottom.
             Spacer(minLength: 0)
-            bottom
+            bottom.padding(.horizontal)
         }
-        .padding(.horizontal)
+        // No side padding for the table: the seat labels use the full width.
         .foregroundStyle(theme.text)
         .background(theme.background.ignoresSafeArea())
         .tint(theme.accent)
