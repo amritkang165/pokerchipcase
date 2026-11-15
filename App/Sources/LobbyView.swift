@@ -42,7 +42,7 @@ struct LobbyView: View {
                 .themedRow()
                 if nearby.localNetworkDenied { Section { LocalNetworkNotice() }.themedRow() }
             }
-            Section("Players") {
+            Section {
                 if session.isHost {
                     // Edits during a send return early: disabling the controls would hide the grips and shift the rows.
                     ForEach(seats, id: \.id) { seat in Text(seat.name).deleteDisabled(seat.id == state.hostID) }
@@ -62,6 +62,8 @@ struct LobbyView: View {
                 } else {
                     ForEach(state.seats, id: \.id) { seat in Text(seat.name) }
                 }
+            } header: {
+                Text("Players").foregroundStyle(theme.muted)
             }
             .themedRow()
             if session.isHost {
@@ -79,7 +81,7 @@ struct LobbyView: View {
                 }
                 .themedRow()
                 #if DEBUG
-                Section("Debug bots") {
+                Section {
                     let free = maxSeats - state.seats.count
                     Stepper("Bots: \(min(max(1, free), botCount))", value: $botCount, in: 1...max(1, free))
                     Picker("Speed", selection: $botSpeed) { ForEach(BotSpeed.allCases, id: \.self) { Text($0.label) } }
@@ -88,6 +90,8 @@ struct LobbyView: View {
                         .pickerStyle(.segmented)
                     Button("Add bots") { DebugBots.fill(session, count: min(max(1, free), botCount), speed: botSpeed, style: botStyle) }
                         .disabled(free <= 0)
+                } header: {
+                    Text("Debug bots").foregroundStyle(theme.muted)
                 }
                 .themedRow()
                 #endif

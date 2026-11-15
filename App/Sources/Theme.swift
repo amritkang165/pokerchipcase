@@ -75,8 +75,8 @@ private struct ThemedScreen: ViewModifier {
         content
             .scrollContentBackground(.hidden)
             .background(theme.screen.ignoresSafeArea())
-            // No foregroundStyle: in a Form it overrides button tint and the destructive role's red.
-            // The dark scheme's label colors are readable on both grounds.
+            // No foregroundStyle, not even a hierarchical one: in a Form it overrides button tint and the
+            // destructive role's red. Section headers set theme.muted themselves.
             .tint(theme.accent)
             .toolbarBackground(theme.screen, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)

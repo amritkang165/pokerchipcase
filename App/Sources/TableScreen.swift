@@ -40,7 +40,7 @@ struct TableScreen: View {
                             .toolbarBackground(.hidden, for: .navigationBar)
                     }
                 } else {
-                    ProgressView("Connecting…")
+                    ProgressView("Connecting…").foregroundStyle(theme.muted)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

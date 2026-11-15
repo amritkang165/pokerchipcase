@@ -32,7 +32,8 @@ struct StartView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Your name") { TextField("Name", text: $playerName) }.themedRow()
+                Section { TextField("Name", text: $playerName) } header: { Text("Your name").foregroundStyle(theme.muted) }
+                    .themedRow()
                 Section {
                     if let savedGame {
                         Button { host(savedGame) } label: {
@@ -52,12 +53,14 @@ struct StartView: View {
                 .disabled(name.isEmpty || busy || !loaded)
                 .themedRow()
                 if busy || !loaded { ProgressView().frame(maxWidth: .infinity).themedRow() }
-                Section("Nearby tables") {
+                Section {
                     if nearby.localNetworkDenied { LocalNetworkNotice() }
                     if nearby.tables.isEmpty { Text("Looking for tables…").foregroundStyle(theme.muted) }
                     ForEach(nearby.tables, id: \.self) { table in
                         Button(table.name) { joining = table }.disabled(name.isEmpty || busy)
                     }
+                } header: {
+                    Text("Nearby tables").foregroundStyle(theme.muted)
                 }
                 .themedRow()
             }
