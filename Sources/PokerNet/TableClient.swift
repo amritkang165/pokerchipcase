@@ -86,6 +86,7 @@ public actor TableClient {
         }
     }
 
+    /// Creates a client for the table at `endpoint`; `timing` tunes reconnecting and failure detection.
     public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil, timing: Timing = Timing()) {
         self.endpoint = endpoint
         self.code = code
