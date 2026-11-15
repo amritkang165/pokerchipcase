@@ -7,7 +7,7 @@ private func dealerName(_ state: GameState) -> String {
 }
 
 /// The pot picker and "Pay out" for the player running the hand. The winners are picked on the
-/// oval (`TableView` owns the selection); everyone else waits.
+/// table (`TableView` owns the selection); everyone else waits.
 struct ShowdownView: View {
     let session: TableSession
     let state: GameState

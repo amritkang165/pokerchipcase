@@ -6,7 +6,7 @@ struct TableView: View {
     let session: TableSession
     let state: GameState
     @Environment(\.theme) private var theme
-    /// Showdown winners per pot, picked on the oval by the player running the hand.
+    /// Showdown winners per pot, picked on the table by the player running the hand.
     @State private var winners: [Set<PlayerID>] = []
     @State private var pot = 0
 
@@ -29,7 +29,7 @@ struct TableView: View {
                     .background(theme.accent.opacity(0.25), in: .rect(cornerRadius: 8))
             }
             // One view for every phase, so it keeps its identity and animates into the showdown.
-            OvalTable(state: state, viewer: session.me, seatState: seatState, onTapSeat: onTapSeat)
+            RoundTable(state: state, viewer: session.me, seatState: seatState, onTapSeat: onTapSeat)
             VStack(spacing: 0) {
                 Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
                 Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
@@ -38,6 +38,8 @@ struct TableView: View {
                     Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
                 }
             }
+            // The table keeps its size, so the slack goes here and the bar stays at the bottom.
+            Spacer(minLength: 0)
             bottom
         }
         .padding(.horizontal)

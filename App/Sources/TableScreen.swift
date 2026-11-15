@@ -45,7 +45,7 @@ struct TableScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle(session.tableName)
-            // Inline, so the oval table gets the height on small iPhones.
+            // Inline, so the table gets the height on small iPhones.
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top) { banner }
             .task(id: session.isSending) {

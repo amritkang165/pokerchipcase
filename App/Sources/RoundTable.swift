@@ -8,12 +8,12 @@ private let seatWidth: CGFloat = 70
 private let seatHeight: CGFloat = 38
 
 /// Index 0 sits at the bottom center, the others follow clockwise on screen.
-/// The radii leave room for a seat label at every point, so labels never leave `size`.
+/// One radius for every seat, so the seating looks the same on every phone.
+/// It leaves room for a seat label at every point, so labels never leave `size`.
 func seatPoint(index: Int, count: Int, in size: CGSize) -> CGPoint {
     let angle = Double.pi / 2 + 2 * Double.pi * Double(index) / Double(max(count, 1))
-    let rx = size.width / 2 - seatWidth / 2
-    let ry = size.height / 2 - seatHeight / 2
-    return CGPoint(x: size.width / 2 + rx * cos(angle), y: size.height / 2 + ry * sin(angle))
+    let r = min(size.width, size.height) / 2 - seatWidth / 2
+    return CGPoint(x: size.width / 2 + r * cos(angle), y: size.height / 2 + r * sin(angle))
 }
 
 /// The point `fraction` of the way from the center to `point`.
@@ -22,7 +22,7 @@ private func toward(_ point: CGPoint, _ fraction: CGFloat, in size: CGSize) -> C
             y: size.height / 2 + (point.y - size.height / 2) * fraction)
 }
 
-struct OvalTable: View {
+struct RoundTable: View {
     let state: GameState
     let viewer: PlayerID?
     var seatState: (Seat) -> SeatMark = { _ in .normal }
@@ -34,11 +34,10 @@ struct OvalTable: View {
             let size = geo.size
             let seats = state.tableOrder(viewer: viewer)
             ZStack {
-                Ellipse()
+                Circle()
                     .fill(RadialGradient(colors: theme.surface, center: .center, startRadius: 0, endRadius: size.width / 2))
-                    .overlay(Ellipse().strokeBorder(theme.rim, lineWidth: 7))
-                    .padding(.horizontal, seatWidth / 2 - 8)
-                    .padding(.vertical, seatHeight / 2 - 6)
+                    .overlay(Circle().strokeBorder(theme.rim, lineWidth: 7))
+                    .padding(seatWidth / 2 - 8)
                 pot.position(x: size.width / 2, y: size.height / 2)
                 ForEach(Array(seats.enumerated()), id: \.element.id) { i, seat in
                     let point = seatPoint(index: i, count: seats.count, in: size)
@@ -57,6 +56,10 @@ struct OvalTable: View {
             }
             .animation(.easeInOut(duration: 0.4), value: state.version)
         }
+        .aspectRatio(1, contentMode: .fit)
+        // From the screen height, not the space left over: that changes with the phase and
+        // the dealer hint, and the table would grow and shrink with it.
+        .containerRelativeFrame(.vertical) { height, _ in height * 0.5 }
         // The layout constants assume at most this size; larger text would overlap the seats.
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
