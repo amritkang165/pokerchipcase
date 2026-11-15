@@ -66,6 +66,8 @@ struct TableScreen: View {
                     Button(session.isHost ? "End table" : "Leave table", role: .destructive) { confirmLeave = true }
                 }
             }
+            // Before the dialogs, so they keep the root's formTint like StartView's.
+            .themedScreen()
             .hostConfirmation($hostPending, session: session)
             .onChange(of: session.state?.version) { hostPending = nil }
             .confirmationDialog(
@@ -75,7 +77,6 @@ struct TableScreen: View {
                 Button(session.isHost ? "End table" : "Leave table", role: .destructive) { leave() }
             }
             .alert(failureMessage, isPresented: failure) { Button("OK") { leave() } }
-            .themedScreen()
         }
     }
 

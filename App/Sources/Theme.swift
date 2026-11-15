@@ -31,7 +31,7 @@ struct Theme: Sendable {
     var surface: [Color]
     var rim: Color
     var accent: Color
-    /// Tint for system forms and sheets, readable on their background.
+    /// Tint for system-drawn UI in the window's scheme (alerts, dialogs), readable on its light or dark material.
     var formTint: Color
     var seat: Color
     var text: Color
