@@ -58,25 +58,44 @@ public actor TableClient {
     /// Sends a `ping` every `pingInterval` while connected; cancelled once the connection ends.
     private var pingTimer: Task<Void, Never>?
 
-    /// `ackTimeout`: how long `send` waits before treating the connection as dead and reconnecting.
-    /// `connectTimeout`: how long a connection attempt may take to reach `welcome` before it is retried.
-    /// The wait doubles after each attempt in a row that timed out, up to `maxConnectTimeout`,
-    /// and starts again at `connectTimeout` after a `welcome`.
-    /// `pingInterval`: how often a connected client sends a `ping`. When nothing arrives for `ackTimeout`,
-    /// the client reconnects, so keep `pingInterval` well below `ackTimeout` (at or above it, every tick reconnects).
-    public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil,
-                retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10),
-                connectTimeout: Duration = .seconds(10), maxConnectTimeout: Duration = .seconds(60),
-                pingInterval: Duration = .seconds(5)) {
+    /// The durations that drive reconnecting and failure detection.
+    public struct Timing: Sendable {
+        /// How long to wait before opening a new connection after a drop.
+        public var retryDelay: Duration
+        /// How long `send` waits before treating the connection as dead and reconnecting.
+        public var ackTimeout: Duration
+        /// How long a connection attempt may take to reach `welcome` before it is retried.
+        /// The wait doubles after each attempt in a row that timed out, up to `maxConnectTimeout`,
+        /// and starts again at `connectTimeout` after a `welcome`.
+        public var connectTimeout: Duration
+        /// Upper bound for the doubled connect timeout.
+        public var maxConnectTimeout: Duration
+        /// How often a connected client sends a `ping`. When nothing arrives for `ackTimeout`,
+        /// the client reconnects, so keep `pingInterval` well below `ackTimeout` (at or above it, every tick reconnects).
+        public var pingInterval: Duration
+
+        /// Creates a timing set; the defaults suit a home network.
+        public init(retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10),
+                    connectTimeout: Duration = .seconds(10), maxConnectTimeout: Duration = .seconds(60),
+                    pingInterval: Duration = .seconds(5)) {
+            self.retryDelay = retryDelay
+            self.ackTimeout = ackTimeout
+            self.connectTimeout = connectTimeout
+            self.maxConnectTimeout = maxConnectTimeout
+            self.pingInterval = pingInterval
+        }
+    }
+
+    public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil, timing: Timing = Timing()) {
         self.endpoint = endpoint
         self.code = code
         self.name = name
         self.token = token
-        self.retryDelay = retryDelay
-        self.ackTimeout = ackTimeout
-        self.connectTimeout = connectTimeout
-        self.maxConnectTimeout = maxConnectTimeout
-        self.pingInterval = pingInterval
+        retryDelay = timing.retryDelay
+        ackTimeout = timing.ackTimeout
+        connectTimeout = timing.connectTimeout
+        maxConnectTimeout = timing.maxConnectTimeout
+        pingInterval = timing.pingInterval
         (events, continuation) = AsyncStream.makeStream()
     }
 

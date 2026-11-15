@@ -15,8 +15,8 @@ private func client(
 ) async -> (TableClient, EventRecorder<ClientEvent>) {
     let client = TableClient(
         endpoint: loopback(port), code: code, name: name, token: token,
-        retryDelay: .milliseconds(100), ackTimeout: ackTimeout, connectTimeout: connectTimeout,
-        pingInterval: pingInterval
+        timing: .init(retryDelay: .milliseconds(100), ackTimeout: ackTimeout, connectTimeout: connectTimeout,
+                      pingInterval: pingInterval)
     )
     let recorder = EventRecorder(client.events)
     await client.connect()
