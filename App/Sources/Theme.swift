@@ -21,6 +21,23 @@ enum Appearance: String, CaseIterable {
     }
 }
 
+/// The per-device card back, stored as `@AppStorage("cardBack")`. Its color is the same in every theme.
+enum CardBack: String, CaseIterable {
+    case red, blue, green, black, purple
+
+    var label: String { rawValue.capitalized }
+
+    var color: Color {
+        switch self {
+        case .red: Color(hex: 0xb03a2e)
+        case .blue: Color(hex: 0x1f4e8c)
+        case .green: Color(hex: 0x1e6b45)
+        case .black: Color(hex: 0x1c1c1e)
+        case .purple: Color(hex: 0x5b3a8c)
+        }
+    }
+}
+
 /// Look tokens. The layout is the same for every theme; only these values change.
 struct Theme: Sendable {
     /// The room around the table.
@@ -39,16 +56,26 @@ struct Theme: Sendable {
     var fold: Color
     /// Exactly three chip colors.
     var chips: [Color]
+    /// Inner frame and lattice of a card back, edge of a card face.
+    var cardFrame: Color
+    /// Card face background.
+    var cardFace: Color
+    /// Rank and the black suits on a card face.
+    var cardText: Color
+    /// Hearts and diamonds.
+    var cardRed: Color
 
     static let felt = Theme(
         background: Color(hex: 0x3b2414), screen: Color(hex: 0x1d5e33), surface: [Color(hex: 0x2f8a4e), Color(hex: 0x1d5e33)], rim: Color(hex: 0x6b3f1d),
         accent: Color(hex: 0xe8c15a), formTint: Color(hex: 0x9a6b00), seat: .black.opacity(0.45), text: Color(hex: 0xf3e9d2), muted: Color(hex: 0xc9b99a),
-        fold: Color(hex: 0x7a2a1f), chips: [Color(hex: 0xc0392b), Color(hex: 0x2c3e50), Color(hex: 0x27ae60)])
+        fold: Color(hex: 0x7a2a1f), chips: [Color(hex: 0xc0392b), Color(hex: 0x2c3e50), Color(hex: 0x27ae60)],
+        cardFrame: .white, cardFace: Color(hex: 0xf3e9d2), cardText: .black, cardRed: Color(hex: 0xc0392b))
 
     static let dark = Theme(
         background: Color(hex: 0x0d0f14), screen: Color(hex: 0x0d0f14), surface: [Color(hex: 0x171a22), Color(hex: 0x171a22)], rim: Color(hex: 0x232733),
         accent: Color(hex: 0x38e1b0), formTint: Color(hex: 0x38e1b0), seat: Color(hex: 0x232733), text: Color(hex: 0xe8eaf0), muted: Color(hex: 0x8a90a2),
-        fold: Color(hex: 0x2a2e3a), chips: [Color(hex: 0x38e1b0), Color(hex: 0x5b6cff), Color(hex: 0xff9f68)])
+        fold: Color(hex: 0x2a2e3a), chips: [Color(hex: 0x38e1b0), Color(hex: 0x5b6cff), Color(hex: 0xff9f68)],
+        cardFrame: Color(hex: 0x3a3f4d), cardFace: Color(hex: 0x232733), cardText: Color(hex: 0xe8eaf0), cardRed: Color(hex: 0xff6b6b))
 }
 
 extension EnvironmentValues {
