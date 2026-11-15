@@ -4,13 +4,20 @@ import PokerCore
 
 /// A table found nearby, with the Bonjour endpoint to connect to.
 public struct DiscoveredTable: Hashable, Sendable {
+    /// Table name, as advertised by the host.
     public var name: String
+    /// Bonjour service to hand to ``TableClient``.
     public var endpoint: NWEndpoint
 }
 
 /// Health of a ``TableBrowser``.
 public enum BrowserStatus: Equatable, Sendable {
-    case browsing, localNetworkDenied, failed
+    /// Searching; tables arrive on ``TableBrowser/tables``.
+    case browsing
+    /// The user has not allowed local network access.
+    case localNetworkDenied
+    /// The browser stopped for another reason; create a new one.
+    case failed
 }
 
 /// Finds tables nearby via Bonjour (Wi-Fi and peer-to-peer). One-shot: after `stop()` or a failure,
@@ -26,6 +33,7 @@ public final class TableBrowser: @unchecked Sendable {
     private let browser: NWBrowser
     private let queue = DispatchQueue(label: "pokernet.browser")
 
+    /// Creates a browser; nothing is searched until `start()`.
     public init() {
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
@@ -34,6 +42,7 @@ public final class TableBrowser: @unchecked Sendable {
         (status, statusContinuation) = AsyncStream.makeStream()
     }
 
+    /// Begins searching; results arrive on `tables` and `status`.
     public func start() {
         browser.browseResultsChangedHandler = { [continuation] results, _ in
             continuation.yield(Self.unique(results.compactMap { result in
@@ -69,6 +78,7 @@ public final class TableBrowser: @unchecked Sendable {
         }
     }
 
+    /// Cancels the search and finishes both streams.
     public func stop() {
         browser.cancel()
         continuation.finish()

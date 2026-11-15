@@ -1,12 +1,16 @@
 import Foundation
 
+/// Most players one table seats.
 public let maxSeats = 10
 
 /// A tournament in progress: the current state plus the earlier states that `undo` steps back to.
 public struct Game: Codable, Equatable, Sendable {
+    /// The current table state.
     public internal(set) var state: GameState
+    /// Earlier states, oldest first; `undo` pops the last one.
     public internal(set) var history: [GameState] = []
 
+    /// Starts a lobby with only the host seated at `config.startingStack`.
     public init(hostID: PlayerID, hostName: String, config: TournamentConfig) {
         state = GameState(
             config: config,

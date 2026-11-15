@@ -4,7 +4,9 @@ import PokerCore
 
 /// Something a ``TableClient`` reports on its `events` stream.
 public enum ClientEvent: Equatable, Sendable {
+    /// The host accepted the client and assigned its player ID and token.
     case welcome(Welcome)
+    /// A new game state arrived.
     case state(GameState)
     /// The connection dropped; the client keeps retrying by itself.
     case connectionLost
@@ -14,14 +16,28 @@ public enum ClientEvent: Equatable, Sendable {
 
 /// Why a ``TableClient`` gave up for good.
 public enum ClientFailure: Equatable, Sendable {
-    case wrongCode, versionMismatch, tableFull, gameInProgress, removed, tableClosed
+    /// The TLS handshake failed because the table code is wrong.
+    case wrongCode
+    /// The host speaks another wire protocol version.
+    case versionMismatch
+    /// The table has no free seat.
+    case tableFull
+    /// The tournament already started and this client has no seat in it.
+    case gameInProgress
+    /// The host removed this player.
+    case removed
+    /// The host ended the table.
+    case tableClosed
     /// Another connection took this seat with the same token (e.g. the player's second device).
     case replaced
 }
 
 /// Why sending a command through a ``TableClient`` failed.
 public enum ClientError: Error, Equatable {
-    case notConnected, connectionLost
+    /// The client has no live connection, so nothing was sent.
+    case notConnected
+    /// The connection dropped before the host answered.
+    case connectionLost
     /// The host answered the command with an `error` code instead of an ack.
     case hostError(String)
 }
@@ -29,8 +45,11 @@ public enum ClientError: Error, Equatable {
 /// Connection to a table host: sends commands, waits for their ack and reconnects after drops.
 /// After `.failed` the client is done; create a new one to try again.
 public actor TableClient {
+    /// Connection and game updates; finishes after `.failed`.
     public nonisolated let events: AsyncStream<ClientEvent>
+    /// Reconnect token from the last `welcome`; nil until the first one.
     public private(set) var token: String?
+    /// The newest state received; nil before the first.
     public private(set) var lastState: GameState?
 
     private let continuation: AsyncStream<ClientEvent>.Continuation
@@ -105,12 +124,14 @@ public actor TableClient {
         continuation.finish()
     }
 
+    /// Opens the connection and keeps it open, reconnecting after drops; does nothing if already running or failed.
     public func connect() {
         guard !running, !gaveUp else { return }
         running = true
         open()
     }
 
+    /// Closes the connection and stops reconnecting.
     public func disconnect() {
         running = false
         generation += 1

@@ -7,6 +7,7 @@ import PokerCore
 /// iOS tears down listening sockets while an app is suspended. Call `ensureListening()` whenever the
 /// app becomes active again; it restarts the listener on the same port if it has stopped.
 public actor TableHost {
+    /// The current game, tokens and table identity; changes with every accepted command.
     public private(set) var snapshot: HostSnapshot
     private let onChange: @Sendable (HostSnapshot) -> Void
     private let queue = DispatchQueue(label: "pokernet.host")
@@ -32,8 +33,10 @@ public actor TableHost {
         self.onChange = onChange
     }
 
+    /// Players with a live connection that has finished `hello`.
     public var connectedPlayers: Set<PlayerID> { Set(bound.values) }
 
+    /// True while the listener accepts connections.
     public var isListening: Bool { listener?.state == .ready }
 
     /// Starts listening (stopping a previous listener first) and returns the bound port.

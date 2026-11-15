@@ -4,12 +4,16 @@ import PokerCore
 /// Everything the host must persist to resume a table after a crash:
 /// the game, the reconnect tokens, and the table name and code clients know it by.
 public struct HostSnapshot: Codable, Equatable, Sendable {
+    /// The tournament, including its undo history.
     public var game: Game
     /// Reconnect token → player.
     public var tokens: [String: PlayerID]
+    /// Name advertised over Bonjour.
     public var tableName: String
+    /// Code clients need to connect.
     public var code: TableCode
 
+    /// Starts a new lobby with a fresh host ID and token; the host is the only player seated.
     public static func newTable(
         hostName: String, tableName: String, code: TableCode = .random(), config: TournamentConfig
     ) -> HostSnapshot {
