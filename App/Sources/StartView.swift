@@ -62,6 +62,17 @@ struct StartView: View {
         .sheet(isPresented: $showSettings) { SettingsView() }
         #if DEBUG
         .task { if DebugBots.auto, !name.isEmpty { host(.newTable(hostName: name, tableName: defaultTableName, config: .quick)) } }
+        .task {
+            guard DebugBots.long, !DebugBots.longRan, !name.isEmpty else { return }
+            DebugBots.longRan = true
+            do {
+                let snapshot = try DebugBots.longGame(hands: 200, hostName: name, tableName: defaultTableName)
+                try DebugBots.reportSaveTimes(snapshot)
+                host(snapshot)
+            } catch {
+                print("debugLongGame: \(error)")
+            }
+        }
         #endif
         .onAppear(perform: reload)
         .sheet(isPresented: $creating) {
