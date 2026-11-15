@@ -75,14 +75,6 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 
 Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet in this betting round; a bet if nobody has bet yet), `allIn`.
 
-### `ping` – heartbeat
-
-```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":1}
-```
-
-Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, also before `hello`; it does not replace `hello`.
-
 ### Deriving legal actions
 
 `state` does not contain a list of legal actions. For the player to act (`seats[toActIndex]`, called `s` below):
@@ -93,6 +85,14 @@ Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, al
 - **Raise** is allowed if `s.mayRaise` and `allInTo > currentBet`. Then `raiseTo.amount` lies between `min(currentBet + lastRaiseSize, allInTo)` and `allInTo`.
 - `raiseTo` with `amount == allInTo` and `allIn` are always equivalent, even below the minimum raise. An all-in that goes above `currentBet` still requires `mayRaise`.
 - **Fold** is always allowed.
+
+### `ping` – heartbeat
+
+```json
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":1}
+```
+
+Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, also before `hello`; it does not replace `hello`.
 
 ## Host → Client
 

@@ -63,7 +63,7 @@ public actor TableClient {
     /// The wait doubles after each attempt in a row that timed out, up to `maxConnectTimeout`,
     /// and starts again at `connectTimeout` after a `welcome`.
     /// `pingInterval`: how often a connected client sends a `ping`. When nothing arrives for `ackTimeout`,
-    /// the client reconnects.
+    /// the client reconnects, so keep `pingInterval` well below `ackTimeout` (at or above it, every tick reconnects).
     public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil,
                 retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10),
                 connectTimeout: Duration = .seconds(10), maxConnectTimeout: Duration = .seconds(60),
@@ -221,10 +221,11 @@ public actor TableClient {
     /// One heartbeat tick; returns whether the loop goes on.
     private func heartbeat(_ attempt: Int, late: Bool) async -> Bool {
         guard attempt == generation, connected else { return false }
-        // ponytail: a late tick means this app was suspended, so the silence is ours, not the host's.
-        // A pong still unread at wake-up can lose the race against this tick and drop a healthy connection
-        // once (one "Reconnecting…" flash); reset `lastHeard` from `TableSession.appBecameActive` if that matters.
+        // A late tick means this app was suspended, so the silence is ours, not the host's.
         if late { lastHeard = .now }
+        // ponytail: a suspension of ~5-10 s with a pong still unread is not flagged late, yet the silence already
+        // reaches `ackTimeout`, so this drops a healthy connection once (one "Reconnecting…" flash);
+        // reset `lastHeard` from `TableSession.appBecameActive` if that matters.
         if .now - lastHeard >= ackTimeout {
             // Otherwise `dropChannel()` would cancel this very task and cut `reconnect()`'s retry delay short.
             pingTimer = nil
