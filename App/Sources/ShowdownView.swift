@@ -13,6 +13,7 @@ struct ShowdownView: View {
     let state: GameState
     @Binding var winners: [Set<PlayerID>]
     @Binding var pot: Int
+    @Environment(\.theme) private var theme
 
     private var ready: Bool { winners.count == state.pots.count && !winners.contains { $0.isEmpty } }
 
@@ -27,14 +28,14 @@ struct ShowdownView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                Text("Tap the winners on the table").font(.caption).foregroundStyle(.secondary)
+                Text("Tap the winners on the table").font(.caption).foregroundStyle(theme.muted)
                 Button("Pay out") { payOut() }
                     .buttonStyle(ThemeButtonStyle())
                     .disabled(session.isSending || !ready)
             }
             .padding(.bottom)
         } else {
-            Text("Waiting for \(dealerName(state)) to pick the winners").foregroundStyle(.secondary).padding(.bottom)
+            Text("Waiting for \(dealerName(state)) to pick the winners").foregroundStyle(theme.muted).padding(.bottom)
         }
     }
 
@@ -48,6 +49,7 @@ struct ShowdownView: View {
 struct NextHandBar: View {
     let session: TableSession
     let state: GameState
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Group {
@@ -56,7 +58,7 @@ struct NextHandBar: View {
                     .buttonStyle(ThemeButtonStyle())
                     .disabled(session.isSending)
             } else {
-                Text("Waiting for \(dealerName(state)) to start the next hand").foregroundStyle(.secondary)
+                Text("Waiting for \(dealerName(state)) to start the next hand").foregroundStyle(theme.muted)
             }
         }
         .padding(.bottom)

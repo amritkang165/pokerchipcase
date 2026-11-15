@@ -17,10 +17,11 @@ struct RankingView: View {
                         Text("\(seat.stack)").monospacedDigit().bold()
                     }
                 }
+                .themedRow()
             }
             .listStyle(.plain)
             Button("Leave table", action: onLeave)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(ThemeButtonStyle())
             .padding(.bottom)
         }
         .padding(.horizontal)

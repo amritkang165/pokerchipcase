@@ -18,6 +18,7 @@ struct StartView: View {
     /// The save files have been read; until then Create could not ask before replacing a saved game.
     @State private var loaded = false
     @State private var showSettings = false
+    @Environment(\.theme) private var theme
 
     private var name: String { playerName.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -31,13 +32,14 @@ struct StartView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Your name") { TextField("Name", text: $playerName) }
+                Section { TextField("Name", text: $playerName) } header: { Text("Your name").foregroundStyle(theme.muted) }
+                    .themedRow()
                 Section {
                     if let savedGame {
                         Button { host(savedGame) } label: {
                             VStack(alignment: .leading) {
                                 Text("Resume game")
-                                Text(savedGame.tableName).font(.caption).foregroundStyle(.secondary)
+                                Text(savedGame.tableName).font(.caption).foregroundStyle(theme.muted)
                             }
                         }
                         Button("Discard", role: .destructive) { discard(SaveFile.host) }
@@ -49,17 +51,22 @@ struct StartView: View {
                     Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
                 .disabled(name.isEmpty || busy || !loaded)
-                if busy || !loaded { ProgressView().frame(maxWidth: .infinity) }
-                Section("Nearby tables") {
+                .themedRow()
+                if busy || !loaded { ProgressView().frame(maxWidth: .infinity).themedRow() }
+                Section {
                     if nearby.localNetworkDenied { LocalNetworkNotice() }
-                    if nearby.tables.isEmpty { Text("Looking for tables…").foregroundStyle(.secondary) }
+                    if nearby.tables.isEmpty { Text("Looking for tables…").foregroundStyle(theme.muted) }
                     ForEach(nearby.tables, id: \.self) { table in
                         Button(table.name) { joining = table }.disabled(name.isEmpty || busy)
                     }
+                } header: {
+                    Text("Nearby tables").foregroundStyle(theme.muted)
                 }
+                .themedRow()
             }
             .navigationTitle("PokerChipCase")
             .toolbar { Button("Settings", systemImage: "gearshape") { showSettings = true } }
+            .themedScreen()
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
         #if DEBUG
@@ -169,11 +176,14 @@ private struct CreateTableSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Table name", text: $tableName)
-                if tooLong { Text("Name is too long").foregroundStyle(.red) }
-                Picker("Blinds", selection: $preset) {
-                    ForEach(TournamentConfig.presets.indices, id: \.self) { Text(TournamentConfig.presets[$0].name).tag($0) }
+                Group {
+                    TextField("Table name", text: $tableName)
+                    if tooLong { Text("Name is too long").foregroundStyle(.red) }
+                    Picker("Blinds", selection: $preset) {
+                        ForEach(TournamentConfig.presets.indices, id: \.self) { Text(TournamentConfig.presets[$0].name).tag($0) }
+                    }
                 }
+                .themedRow()
             }
             .navigationTitle("Create table")
             .toolbar {
@@ -187,6 +197,7 @@ private struct CreateTableSheet: View {
                 }
             }
             .onAppear { tableName = defaultName }
+            .themedScreen()
         }
     }
 }
@@ -201,7 +212,7 @@ private struct JoinSheet: View {
     var body: some View {
         NavigationStack {
             // Focused on open, so the number pad is up and the code can be typed right away.
-            Form { TextField("Code", text: $text).keyboardType(.numberPad).focused($codeFocused) }
+            Form { TextField("Code", text: $text).keyboardType(.numberPad).focused($codeFocused).themedRow() }
                 .onAppear { codeFocused = true }
                 // Joins on the fourth digit; the number pad has no return key and a Join button sits out of reach.
                 .onChange(of: text) {
@@ -213,6 +224,7 @@ private struct JoinSheet: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 }
+                .themedScreen()
         }
     }
 }

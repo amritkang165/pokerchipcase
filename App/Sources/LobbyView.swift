@@ -9,6 +9,7 @@ struct LobbyView: View {
     /// The order just dragged, shown until the host's state with it arrives, so the row does not jump back.
     @State private var moved: [PlayerID]?
     @State private var nearby = NearbyTables()
+    @Environment(\.theme) private var theme
     #if DEBUG
     @AppStorage("debugBotCount") private var botCount = 9
     @AppStorage("debugBotSpeed") private var botSpeed = BotSpeed.fast
@@ -32,15 +33,16 @@ struct LobbyView: View {
             if session.isHost {
                 Section {
                     VStack(spacing: 4) {
-                        Text("Table code").font(.subheadline).foregroundStyle(.secondary)
+                        Text("Table code").font(.subheadline).foregroundStyle(theme.muted)
                         Text(session.code.digits).font(.system(size: 48, weight: .bold, design: .monospaced))
-                        Text("\(state.config.startingStack) chips · \(minutes) min levels").foregroundStyle(.secondary)
+                        Text("\(state.config.startingStack) chips · \(minutes) min levels").foregroundStyle(theme.muted)
                     }
                     .frame(maxWidth: .infinity)
                 }
-                if nearby.localNetworkDenied { Section { LocalNetworkNotice() } }
+                .themedRow()
+                if nearby.localNetworkDenied { Section { LocalNetworkNotice() }.themedRow() }
             }
-            Section("Players") {
+            Section {
                 if session.isHost {
                     // Edits during a send return early: disabling the controls would hide the grips and shift the rows.
                     ForEach(seats, id: \.id) { seat in Text(seat.name).deleteDisabled(seat.id == state.hostID) }
@@ -60,7 +62,10 @@ struct LobbyView: View {
                 } else {
                     ForEach(state.seats, id: \.id) { seat in Text(seat.name) }
                 }
+            } header: {
+                Text("Players").foregroundStyle(theme.muted)
             }
+            .themedRow()
             if session.isHost {
                 Section {
                     Picker("Dealer", selection: $dealer) {
@@ -74,8 +79,9 @@ struct LobbyView: View {
                     }
                     .disabled(state.seats.count < 2 || session.isSending)
                 }
+                .themedRow()
                 #if DEBUG
-                Section("Debug bots") {
+                Section {
                     let free = maxSeats - state.seats.count
                     Stepper("Bots: \(min(max(1, free), botCount))", value: $botCount, in: 1...max(1, free))
                     Picker("Speed", selection: $botSpeed) { ForEach(BotSpeed.allCases, id: \.self) { Text($0.label) } }
@@ -84,10 +90,13 @@ struct LobbyView: View {
                         .pickerStyle(.segmented)
                     Button("Add bots") { DebugBots.fill(session, count: min(max(1, free), botCount), speed: botSpeed, style: botStyle) }
                         .disabled(free <= 0)
+                } header: {
+                    Text("Debug bots").foregroundStyle(theme.muted)
                 }
+                .themedRow()
                 #endif
             } else {
-                Section { Text("Waiting for \(state.seat(state.hostID)?.name ?? "the host") to start") }
+                Section { Text("Waiting for \(state.seat(state.hostID)?.name ?? "the host") to start") }.themedRow()
             }
         }
         .environment(\.editMode, .constant(session.isHost ? .active : .inactive))

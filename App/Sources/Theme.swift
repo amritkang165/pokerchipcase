@@ -23,12 +23,15 @@ enum Appearance: String, CaseIterable {
 
 /// Look tokens. The layout is the same for every theme; only these values change.
 struct Theme: Sendable {
+    /// The room around the table.
     var background: Color
+    /// Ground of the screens away from the table: lists, forms and sheets.
+    var screen: Color
     /// Inner and outer stop of the table's radial gradient.
     var surface: [Color]
     var rim: Color
     var accent: Color
-    /// Tint for system forms and sheets, readable on their background.
+    /// Tint for system-drawn UI in the window's scheme (alerts, dialogs), readable on its light or dark material.
     var formTint: Color
     var seat: Color
     var text: Color
@@ -38,12 +41,12 @@ struct Theme: Sendable {
     var chips: [Color]
 
     static let felt = Theme(
-        background: Color(hex: 0x3b2414), surface: [Color(hex: 0x2f8a4e), Color(hex: 0x1d5e33)], rim: Color(hex: 0x6b3f1d),
+        background: Color(hex: 0x3b2414), screen: Color(hex: 0x1d5e33), surface: [Color(hex: 0x2f8a4e), Color(hex: 0x1d5e33)], rim: Color(hex: 0x6b3f1d),
         accent: Color(hex: 0xe8c15a), formTint: Color(hex: 0x9a6b00), seat: .black.opacity(0.45), text: Color(hex: 0xf3e9d2), muted: Color(hex: 0xc9b99a),
         fold: Color(hex: 0x7a2a1f), chips: [Color(hex: 0xc0392b), Color(hex: 0x2c3e50), Color(hex: 0x27ae60)])
 
     static let dark = Theme(
-        background: Color(hex: 0x0d0f14), surface: [Color(hex: 0x171a22), Color(hex: 0x171a22)], rim: Color(hex: 0x232733),
+        background: Color(hex: 0x0d0f14), screen: Color(hex: 0x0d0f14), surface: [Color(hex: 0x171a22), Color(hex: 0x171a22)], rim: Color(hex: 0x232733),
         accent: Color(hex: 0x38e1b0), formTint: Color(hex: 0x38e1b0), seat: Color(hex: 0x232733), text: Color(hex: 0xe8eaf0), muted: Color(hex: 0x8a90a2),
         fold: Color(hex: 0x2a2e3a), chips: [Color(hex: 0x38e1b0), Color(hex: 0x5b6cff), Color(hex: 0xff9f68)])
 }
@@ -55,6 +58,36 @@ extension EnvironmentValues {
 extension View {
     /// Sets the theme that matches the current color scheme, and its form tint.
     func themed() -> some View { modifier(Themed()) }
+
+    /// Theme background, tint and navigation bar for a screen; the last modifier inside its `NavigationStack`.
+    /// Both themes have dark grounds, so system controls take their dark style. The bar's background
+    /// visibility is left to the screen: the table hides it from outside.
+    func themedScreen() -> some View { modifier(ThemedScreen()) }
+
+    /// The theme's seat color as the row background of a list or form section.
+    func themedRow() -> some View { modifier(ThemedRow()) }
+}
+
+private struct ThemedScreen: ViewModifier {
+    @Environment(\.theme) private var theme
+
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background(theme.screen.ignoresSafeArea())
+            // No foregroundStyle, not even a hierarchical one: in a Form it overrides button tint and the
+            // destructive role's red. Section headers set theme.muted themselves.
+            .tint(theme.accent)
+            .toolbarBackground(theme.screen, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct ThemedRow: ViewModifier {
+    @Environment(\.theme) private var theme
+
+    func body(content: Content) -> some View { content.listRowBackground(theme.seat) }
 }
 
 private struct Themed: ViewModifier {
