@@ -11,11 +11,12 @@ extension ClientEvent {
 
 private func client(
     _ port: NWEndpoint.Port, name: String = "Ben", token: String? = nil, code: TableCode = code4711,
-    ackTimeout: Duration = .seconds(10), connectTimeout: Duration = .seconds(10)
+    ackTimeout: Duration = .seconds(10), connectTimeout: Duration = .seconds(10), pingInterval: Duration = .seconds(5)
 ) async -> (TableClient, EventRecorder<ClientEvent>) {
     let client = TableClient(
         endpoint: loopback(port), code: code, name: name, token: token,
-        retryDelay: .milliseconds(100), ackTimeout: ackTimeout, connectTimeout: connectTimeout
+        retryDelay: .milliseconds(100), ackTimeout: ackTimeout, connectTimeout: connectTimeout,
+        pingInterval: pingInterval
     )
     let recorder = EventRecorder(client.events)
     await client.connect()
@@ -314,6 +315,39 @@ struct ClientTests {
         await #expect(throws: ClientError.connectionLost) { try await ben.send(.startNextHand) }
         _ = try await events.first { $0 == .connectionLost }
         try await eventually { await fake.hellos == 2 }
+        await ben.disconnect()
+        await fake.dropAll()
+    }
+
+    @Test func silentHostIsDetectedWhileConnected() async throws {
+        let fake = try FakeHost()  // welcomes, never answers ping
+        let (ben, events) = await client(try await fake.start(), ackTimeout: .milliseconds(500), pingInterval: .milliseconds(100))
+        _ = try await events.first { $0.welcome != nil }
+        _ = try await events.first { $0 == .connectionLost }
+        try await eventually { await fake.hellos == 2 }
+        await ben.disconnect()
+        await fake.dropAll()
+    }
+
+    @Test func answeredPingsKeepTheConnection() async throws {
+        let (host, port) = try await startHost()
+        let (ben, events) = await client(port, ackTimeout: .milliseconds(500), pingInterval: .milliseconds(100))
+        _ = try await events.first { $0.welcome != nil }
+        try await Task.sleep(for: .milliseconds(1500))
+        #expect(!(await events.all.contains(.connectionLost)))
+        await ben.disconnect()
+        await host.stop()
+    }
+
+    @Test func olderHostAnsweringMalformedKeepsTheConnection() async throws {
+        let fake = try FakeHost { id, message in
+            guard message == .ping else { return ([], false) }
+            return ([try Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
+        }
+        let (ben, events) = await client(try await fake.start(), ackTimeout: .milliseconds(500), pingInterval: .milliseconds(100))
+        _ = try await events.first { $0.welcome != nil }
+        try await Task.sleep(for: .milliseconds(1500))
+        #expect(!(await events.all.contains(.connectionLost)))
         await ben.disconnect()
         await fake.dropAll()
     }

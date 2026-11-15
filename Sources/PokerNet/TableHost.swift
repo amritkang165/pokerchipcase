@@ -172,6 +172,8 @@ public actor TableHost {
             welcome(hello, from: id, requestID: messageID)
         case let .command(request):
             handle(request, messageID: messageID, from: id)
+        case .ping:
+            send(.pong, to: id, envelopeID: messageID)
         }
     }
 

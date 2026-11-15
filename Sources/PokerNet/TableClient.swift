@@ -41,6 +41,7 @@ public actor TableClient {
     private let ackTimeout: Duration
     private let connectTimeout: Duration
     private let maxConnectTimeout: Duration
+    private let pingInterval: Duration
     private var channel: MessageChannel?
     private var connected = false
     private var running = false
@@ -52,14 +53,21 @@ public actor TableClient {
     private(set) var connectTimeouts = 0
     /// Sleeps until the current attempt's connect timeout; cancelled once the attempt ends or is welcomed.
     private var connectTimer: Task<Void, Never>?
+    /// When the current connection last delivered any message, readable or not.
+    private var lastHeard = ContinuousClock.now
+    /// Sends a `ping` every `pingInterval` while connected; cancelled once the connection ends.
+    private var pingTimer: Task<Void, Never>?
 
     /// `ackTimeout`: how long `send` waits before treating the connection as dead and reconnecting.
     /// `connectTimeout`: how long a connection attempt may take to reach `welcome` before it is retried.
     /// The wait doubles after each attempt in a row that timed out, up to `maxConnectTimeout`,
     /// and starts again at `connectTimeout` after a `welcome`.
+    /// `pingInterval`: how often a connected client sends a `ping`. When nothing arrives for `ackTimeout`,
+    /// the client reconnects.
     public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil,
                 retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10),
-                connectTimeout: Duration = .seconds(10), maxConnectTimeout: Duration = .seconds(60)) {
+                connectTimeout: Duration = .seconds(10), maxConnectTimeout: Duration = .seconds(60),
+                pingInterval: Duration = .seconds(5)) {
         self.endpoint = endpoint
         self.code = code
         self.name = name
@@ -68,6 +76,7 @@ public actor TableClient {
         self.ackTimeout = ackTimeout
         self.connectTimeout = connectTimeout
         self.maxConnectTimeout = maxConnectTimeout
+        self.pingInterval = pingInterval
         (events, continuation) = AsyncStream.makeStream()
     }
 
@@ -149,6 +158,7 @@ public actor TableClient {
             let hello = ClientMessage.hello(Hello(name: name, token: token))
             if let data = try? Wire.encode(hello, id: UUID()) { channel?.send(data) }
         case let .message(data):
+            lastHeard = .now
             do {
                 let (id, message) = try Wire.decodeServer(data)
                 receive(message, id: id)
@@ -168,6 +178,7 @@ public actor TableClient {
             connectTimeouts = 0
             connectTimer?.cancel()
             connectTimer = nil
+            startHeartbeat()
             continuation.yield(.welcome(welcome))
         case let .state(state):
             lastState = state
@@ -187,7 +198,41 @@ public actor TableClient {
             // (e.g. an older protocol answering `malformed`). Waiting would hang at "Connecting…".
             default: if !connected { fail(.versionMismatch) }
             }
+        case .pong:
+            break  // Hearing it was the point; `handle` already updated `lastHeard`.
         }
+    }
+
+    /// Catches a host that went silent while this client is connected (e.g. its app is suspended).
+    private func startHeartbeat() {
+        pingTimer?.cancel()
+        let attempt = generation
+        pingTimer = Task { [weak self, pingInterval] in
+            var previous = ContinuousClock.now
+            while true {
+                do { try await Task.sleep(for: pingInterval) } catch { return }
+                let tick = ContinuousClock.now
+                guard await self?.heartbeat(attempt, late: tick - previous > pingInterval * 2) == true else { return }
+                previous = tick
+            }
+        }
+    }
+
+    /// One heartbeat tick; returns whether the loop goes on.
+    private func heartbeat(_ attempt: Int, late: Bool) async -> Bool {
+        guard attempt == generation, connected else { return false }
+        // ponytail: a late tick means this app was suspended, so the silence is ours, not the host's.
+        // A pong still unread at wake-up can lose the race against this tick and drop a healthy connection
+        // once (one "Reconnecting…" flash); reset `lastHeard` from `TableSession.appBecameActive` if that matters.
+        if late { lastHeard = .now }
+        if .now - lastHeard >= ackTimeout {
+            // Otherwise `dropChannel()` would cancel this very task and cut `reconnect()`'s retry delay short.
+            pingTimer = nil
+            await reconnect()
+            return false
+        }
+        if let data = try? Wire.encode(ClientMessage.ping, id: UUID()) { channel?.send(data) }
+        return true
     }
 
     private func channelEnded(_ error: Error?, attempt: Int) async {
@@ -226,6 +271,8 @@ public actor TableClient {
         connected = false
         connectTimer?.cancel()
         connectTimer = nil
+        pingTimer?.cancel()
+        pingTimer = nil
         channel?.cancel()
         channel = nil
         for waiting in pending.values { waiting.resume(throwing: ClientError.connectionLost) }
