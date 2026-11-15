@@ -44,7 +44,13 @@ public struct Game: Codable, Equatable, Sendable {
         } else {
             var next = state
             try next.apply(command, by: actor, at: now, using: &rng)
-            if command != .pauseClock, command != .resumeClock { history.append(state) }
+            var steps = command == .pauseClock || command == .resumeClock ? [] : [state]
+            if next.config.digitalCards, state.phase != .showdown, next.phase == .showdown {
+                // The cards decide, so the payout is automatic; the showdown stays in history for undo.
+                steps.append(next)
+                try next.resolveShowdown(next.showdownWinners())
+            }
+            history += steps
             state = next
         }
         state.version = version
