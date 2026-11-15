@@ -141,7 +141,7 @@ The base colors of the card backs are the same in both themes. The dark theme ha
 
 ## Testing
 
-### PokerCore
+### Core tests
 
 - `CardTests`: `"Ah"` round-trips; `"1x"`, `"A"` and `"Ahh"` fail to decode.
 - `EvaluatorTests`: one hand per category and the order of categories; kickers decide within a category; the wheel loses to a six-high straight; the best 5 of 7 cards is found; a board that plays splits the pot.
@@ -151,12 +151,12 @@ The base colors of the card backs are the same in both themes. The dark theme ha
 - `dealerHint` is `nil` in digital games.
 - Existing tests run unchanged with `digitalCards: false`. The chip conservation test also runs in digital mode.
 
-### PokerNet
+### Net tests
 
 - Two real clients at a host with a digital tournament: client A receives its own hole cards, not B's, and `deck == []`. A reconnecting client receives its own cards again.
 - Wire golden tests move to `"v":2`; one new golden test covers a state with cards.
 
-### Manual (iPhone, simulator as the second device)
+### Manual checks (iPhone, simulator as the second device)
 
 - Holding the cards shows them, releasing hides them; VoiceOver action works.
 - Board and showdown display in both themes, including a side pot.

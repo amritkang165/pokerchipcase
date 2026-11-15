@@ -57,12 +57,14 @@ Inputs the spec implies but does not list as tests. Each has a test in the task 
 ### Task 1: Card
 
 **Files:**
+
 - Create: `Sources/PokerCore/Card.swift`
 - Create: `Tests/PokerCoreTests/CardTests.swift`
 - Modify: `Tests/PokerCoreTests/Helpers.swift`
 - Modify: `Sources/PokerCore/PokerCore.docc/PokerCore.md` (new topic group `### Cards` with ``Card``)
 
 **Interfaces:**
+
 - Produces:
   - `public struct Card: Hashable, Codable, Sendable, CustomStringConvertible` with `public let rank: Int` (2…14) and `public let suit: Suit`
   - `public enum Card.Suit: String, CaseIterable, Sendable` with cases `clubs = "c"`, `diamonds = "d"`, `hearts = "h"`, `spades = "s"`
@@ -112,11 +114,13 @@ git commit -m "docs: spec and plan for digital cards"
 ### Task 2: Hand evaluator
 
 **Files:**
+
 - Create: `Sources/PokerCore/HandValue.swift`
 - Create: `Tests/PokerCoreTests/EvaluatorTests.swift`
 - Modify: `Sources/PokerCore/PokerCore.docc/PokerCore.md` (add ``HandValue`` and ``evaluate(_:)`` to `### Cards`)
 
 **Interfaces:**
+
 - Consumes: `Card`, `cards(_:)` from Task 1.
 - Produces:
   - `public struct HandValue: Comparable, Sendable` with `public let category: Category` and `public let ranks: [Int]`
@@ -179,12 +183,14 @@ private func value(_ text: String) -> HandValue { evaluate(cards(text)) }
 ### Task 3: Dealing
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Types.swift`, `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift`, `Sources/PokerSession/Display.swift`
 - Create: `Sources/PokerCore/DigitalCards.swift`
 - Create: `Tests/PokerCoreTests/DealingTests.swift`
 - Modify: `Tests/PokerCoreTests/Helpers.swift`, `Tests/PokerCoreTests/ChipConservationTests.swift`, `Tests/PokerSessionTests/DisplayTests.swift`
 
 **Interfaces:**
+
 - Consumes: `Card.fullDeck`.
 - Produces:
   - `public var digitalCards: Bool` on `TournamentConfig`; `init(startingStack:levels:digitalCards: Bool = false)`
@@ -263,11 +269,13 @@ Add to `DisplayTests.swift`:
 ### Task 4: Automatic payout and the reveal rule
 
 **Files:**
+
 - Modify: `Sources/PokerCore/DigitalCards.swift`, `Sources/PokerCore/Game.swift`
 - Create: `Tests/PokerCoreTests/AutoShowdownTests.swift`
 - Modify: `Tests/PokerCoreTests/ChipConservationTests.swift`
 
 **Interfaces:**
+
 - Consumes: `evaluate(_:)`, `rig(_:board:)`, `Game.started(digital:)`, the existing `resolveShowdown(_:)` and `split(...)`.
 - Produces, in `DigitalCards.swift`:
   - `public func isRevealed(_ seat: Seat) -> Bool` on `GameState`: phase is `showdown`, `handComplete` or `finished`, the seat has not folded, and at least 2 seats have not folded
@@ -372,10 +380,12 @@ In `ChipConservationTests.swift`, turn `chipsAreConservedInRandomTournaments` in
 ### Task 5: Redaction
 
 **Files:**
+
 - Modify: `Sources/PokerCore/DigitalCards.swift`
 - Create: `Tests/PokerCoreTests/RedactionTests.swift`
 
 **Interfaces:**
+
 - Consumes: `isRevealed(_:)`.
 - Produces: `public func redacted(for viewer: PlayerID?) -> GameState` on `GameState`: `deck = []`; `holeCards = []` on every seat that is neither the viewer's nor revealed. Nothing else changes.
 
@@ -426,12 +436,14 @@ In `ChipConservationTests.swift`, turn `chipsAreConservedInRandomTournaments` in
 ### Task 6: Per-player broadcast, protocol version 2, PR 1
 
 **Files:**
+
 - Modify: `Sources/PokerNet/TableHost.swift` (`broadcastState`), `Sources/PokerCore/Wire.swift` (`version`, the `{"v": 1, …}` doc comment)
 - Modify: `Sources/PokerNet/PokerNet.docc/Protocol.md`
 - Modify: `Tests/PokerCoreTests/WireTests.swift`, `Tests/PokerNetTests/HostCommandTests.swift`, `Tests/PokerNetTests/Helpers.swift`
 - Create: `Tests/PokerNetTests/HostCardsTests.swift`
 
 **Interfaces:**
+
 - Consumes: `GameState.redacted(for:)`, `TournamentConfig.digitalCards`.
 - Produces:
   - `broadcastState()` sends `snapshot.game.state.redacted(for: player)` to each bound connection
@@ -507,10 +519,12 @@ Also add a digital game's state to the messages of the existing `serverRoundTrip
 ### Task 7: Card views, theme tokens, card back setting
 
 **Files:**
+
 - Create: `App/Sources/CardViews.swift`
 - Modify: `App/Sources/Theme.swift`, `App/Sources/SettingsView.swift`
 
 **Interfaces:**
+
 - Consumes: `Card`.
 - Produces:
   - `Theme` tokens (felt / dark): `cardFrame` (`.white` / `0x3a3f4d`), `cardFace` (`0xf3e9d2` / `0x232733`), `cardText` (`.black` / `0xe8eaf0`), `cardRed` (`0xc0392b` / `0xff6b6b`)
@@ -530,9 +544,11 @@ Also add a digital game's state to the messages of the existing `serverRoundTrip
 ### Task 8: Table creation, host menu, debug
 
 **Files:**
+
 - Modify: `App/Sources/StartView.swift`, `App/Sources/LobbyView.swift`, `App/Sources/HostMenu.swift`, `App/Sources/DebugBots.swift`
 
 **Interfaces:**
+
 - Consumes: `TournamentConfig.digitalCards`, `GameState.isRevealed(_:)`.
 - Produces:
   - `CreateTableSheet`: `@AppStorage("digitalCards") private var digitalCards = false`, a `Toggle("Digital cards", isOn:)` below the "Blinds" picker; `onCreate` receives the preset's config with `digitalCards` set
@@ -551,9 +567,11 @@ Also add a digital game's state to the messages of the existing `serverRoundTrip
 ### Task 9: Cards on the table
 
 **Files:**
+
 - Modify: `App/Sources/RoundTable.swift`, `App/Sources/TableView.swift`, `App/Sources/RankingView.swift`
 
 **Interfaces:**
+
 - Consumes: Task 7's views; `GameState.board`, `isRevealed(_:)`, `handValue(of:)`, `config.digitalCards`.
 - Produces:
   - `RoundTable`, only when `state.config.digitalCards`:
@@ -574,6 +592,7 @@ Also add a digital game's state to the messages of the existing `serverRoundTrip
 ### Task 10: Gates, manual checks, PR 2
 
 **Files:**
+
 - Modify: `README.md` (one sentence in the feature description: optional digital cards)
 
 - [ ] **Step 1: Run the gates:** `pre-commit run --all-files`, `swift test`, the DocC build, the app build. Expected: all pass.
