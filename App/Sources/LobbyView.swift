@@ -9,6 +9,7 @@ struct LobbyView: View {
     /// The order just dragged, shown until the host's state with it arrives, so the row does not jump back.
     @State private var moved: [PlayerID]?
     @State private var nearby = NearbyTables()
+    @Environment(\.theme) private var theme
     #if DEBUG
     @AppStorage("debugBotCount") private var botCount = 9
     @AppStorage("debugBotSpeed") private var botSpeed = BotSpeed.fast
@@ -32,13 +33,14 @@ struct LobbyView: View {
             if session.isHost {
                 Section {
                     VStack(spacing: 4) {
-                        Text("Table code").font(.subheadline).foregroundStyle(.secondary)
+                        Text("Table code").font(.subheadline).foregroundStyle(theme.muted)
                         Text(session.code.digits).font(.system(size: 48, weight: .bold, design: .monospaced))
-                        Text("\(state.config.startingStack) chips · \(minutes) min levels").foregroundStyle(.secondary)
+                        Text("\(state.config.startingStack) chips · \(minutes) min levels").foregroundStyle(theme.muted)
                     }
                     .frame(maxWidth: .infinity)
                 }
-                if nearby.localNetworkDenied { Section { LocalNetworkNotice() } }
+                .themedRow()
+                if nearby.localNetworkDenied { Section { LocalNetworkNotice() }.themedRow() }
             }
             Section("Players") {
                 if session.isHost {
@@ -61,6 +63,7 @@ struct LobbyView: View {
                     ForEach(state.seats, id: \.id) { seat in Text(seat.name) }
                 }
             }
+            .themedRow()
             if session.isHost {
                 Section {
                     Picker("Dealer", selection: $dealer) {
@@ -74,6 +77,7 @@ struct LobbyView: View {
                     }
                     .disabled(state.seats.count < 2 || session.isSending)
                 }
+                .themedRow()
                 #if DEBUG
                 Section("Debug bots") {
                     let free = maxSeats - state.seats.count
@@ -85,9 +89,10 @@ struct LobbyView: View {
                     Button("Add bots") { DebugBots.fill(session, count: min(max(1, free), botCount), speed: botSpeed, style: botStyle) }
                         .disabled(free <= 0)
                 }
+                .themedRow()
                 #endif
             } else {
-                Section { Text("Waiting for \(state.seat(state.hostID)?.name ?? "the host") to start") }
+                Section { Text("Waiting for \(state.seat(state.hostID)?.name ?? "the host") to start") }.themedRow()
             }
         }
         .environment(\.editMode, .constant(session.isHost ? .active : .inactive))

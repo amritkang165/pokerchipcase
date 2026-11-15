@@ -11,11 +11,13 @@ struct SettingsView: View {
                     ForEach(Appearance.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .themedRow()
             }
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
+            .themedScreen()
         }
     }
 }

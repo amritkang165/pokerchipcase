@@ -55,6 +55,36 @@ extension EnvironmentValues {
 extension View {
     /// Sets the theme that matches the current color scheme, and its form tint.
     func themed() -> some View { modifier(Themed()) }
+
+    /// Theme background, tint and navigation bar for a screen; the last modifier inside its `NavigationStack`.
+    /// Both themes have dark grounds, so system controls take their dark style. The bar's background
+    /// visibility is left to the screen: the table hides it from outside.
+    func themedScreen() -> some View { modifier(ThemedScreen()) }
+
+    /// The theme's seat color as the row background of a list or form section.
+    func themedRow() -> some View { modifier(ThemedRow()) }
+}
+
+private struct ThemedScreen: ViewModifier {
+    @Environment(\.theme) private var theme
+
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background(theme.background.ignoresSafeArea())
+            // No foregroundStyle: in a Form it overrides button tint and the destructive role's red.
+            // The dark scheme's label colors are readable on both grounds.
+            .tint(theme.accent)
+            .toolbarBackground(theme.background, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct ThemedRow: ViewModifier {
+    @Environment(\.theme) private var theme
+
+    func body(content: Content) -> some View { content.listRowBackground(theme.seat) }
 }
 
 private struct Themed: ViewModifier {

@@ -11,6 +11,7 @@ struct TableScreen: View {
     @State private var leaveFailed = false
     /// A send still running after a moment; a fast one shows no banner, which would push the screen down and back.
     @State private var slowSend = false
+    @Environment(\.theme) private var theme
 
     init(session: TableSession, onLeave: @escaping () -> Void) {
         self.session = session
@@ -74,6 +75,7 @@ struct TableScreen: View {
                 Button(session.isHost ? "End table" : "Leave table", role: .destructive) { leave() }
             }
             .alert(failureMessage, isPresented: failure) { Button("OK") { leave() } }
+            .themedScreen()
         }
     }
 
@@ -84,7 +86,7 @@ struct TableScreen: View {
     /// Nothing at all when there is no message, so no empty bar shows above the table.
     @ViewBuilder private var banner: some View {
         if let text = bannerText {
-            text.frame(maxWidth: .infinity).padding(6).background(.bar)
+            text.frame(maxWidth: .infinity).padding(6).background(theme.background)
         }
     }
 
