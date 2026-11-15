@@ -8,7 +8,7 @@ import PokerNet
 public struct SessionProblem: Equatable, Sendable {
     /// The kind of operation that failed.
     public enum Action: Sendable {
-        /// Writing the host save file.
+        /// Writing the host save file or the guest's seat ticket.
         case save
         /// Deleting the save file or seat ticket.
         case delete

@@ -16,7 +16,7 @@ public enum Action: Codable, Equatable, Sendable {
 public enum Command: Codable, Equatable, Sendable {
     /// Seats a new player; host only, in the lobby.
     case join(player: PlayerID, name: String)
-    /// Takes a player out of the table; the host may do it any time, a player only for themselves in the lobby.
+    /// Takes a player out; the host may remove anyone but themselves in the lobby, during betting or between hands, a player only themselves in the lobby.
     case removePlayer(player: PlayerID)
     /// Sets the seat order to `order`, which must list every seated player once; host only, in the lobby.
     case arrangeSeats(order: [PlayerID])
@@ -32,7 +32,7 @@ public enum Command: Codable, Equatable, Sendable {
     case pauseClock
     /// Restarts a paused blind clock; host only.
     case resumeClock
-    /// Restores the state before the last command; host only.
+    /// Reverts the last command other than a clock pause or resume; host only. The clock itself is not rolled back.
     case undo
 }
 
@@ -42,15 +42,15 @@ public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case notHost
     /// Only the dealer or the host may send this command.
     case notDealer
-    /// The player is not the one to act.
+    /// The player is not the one to act, or the sender may not act for them.
     case notYourTurn
-    /// The command is not allowed in the current ``Phase``.
+    /// The command is not allowed in the current ``Phase`` (or clock state).
     case invalidPhase
     /// The action does not fit the situation, for example checking when a bet is open.
     case illegalAction
     /// A raise is below the minimum or above the player's stack.
     case invalidAmount
-    /// The player is not seated, or is already eliminated.
+    /// The player is not seated or already eliminated, or `arrangeSeats` does not list every seated player exactly once.
     case unknownPlayer
     /// A player with this ID is already seated.
     case duplicatePlayer

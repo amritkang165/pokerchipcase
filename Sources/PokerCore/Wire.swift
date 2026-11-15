@@ -96,11 +96,11 @@ public enum WireErrorCode: String, Sendable {
     case tableFull
     /// A new player tried to join after the tournament started (no valid token for a seat).
     case gameInProgress
-    /// A message arrived before the client's `hello`.
+    /// A command arrived before the client's `hello`.
     case helloRequired
     /// The message could not be decoded, or a second `hello` arrived on a connection.
     case malformed
-    /// The host removed this player; sent just before the connection closes.
+    /// The player lost their seat: removed by the host, or their join was undone; sent just before the connection closes.
     case removed
     /// The host closed the table.
     case tableClosed
@@ -158,7 +158,7 @@ public enum Wire {
         }
     }
 
-    /// Decodes a client message and its envelope `id`; throws ``WireError`` for a wrong version or unknown type.
+    /// Decodes a client message and its envelope `id`; throws ``WireError`` for a wrong version or unknown type, or a `DecodingError` when the JSON does not parse.
     public static func decodeClient(_ data: Data) throws -> (id: UUID, message: ClientMessage) {
         let h = try header(data)
         switch h.type {
@@ -169,7 +169,7 @@ public enum Wire {
         }
     }
 
-    /// Decodes a server message and its envelope `id`; throws ``WireError`` for a wrong version or unknown type.
+    /// Decodes a server message and its envelope `id`; throws ``WireError`` for a wrong version or unknown type, or a `DecodingError` when the JSON does not parse.
     public static func decodeServer(_ data: Data) throws -> (id: UUID, message: ServerMessage) {
         let h = try header(data)
         switch h.type {

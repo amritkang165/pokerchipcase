@@ -7,9 +7,9 @@ public typealias PlayerID = String
 
 /// One step of the blind schedule; `duration` is in seconds.
 public struct BlindLevel: Codable, Equatable, Sendable {
-    /// Chips the player left of the button posts.
+    /// Chips the small blind posts: the player left of the button, or the button itself heads-up.
     public var smallBlind: Chips
-    /// Chips the second player left of the button posts; also the minimum bet.
+    /// Chips the big blind posts, the next player after the small blind; also the minimum bet.
     public var bigBlind: Chips
     /// How long the level lasts, in seconds.
     public var duration: TimeInterval
@@ -78,7 +78,7 @@ public struct Seat: Codable, Equatable, Sendable {
     public var handBet: Chips = 0
     /// Stack when the current hand began; used to rank players who bust together.
     public var stackAtHandStart: Chips = 0
-    /// True once the player folded in this hand; eliminated seats count as folded.
+    /// True once the player folded or was removed in this hand; every hand starts with eliminated seats folded.
     public var folded = false
     /// True when the whole stack is bet and no further action is possible.
     public var allIn = false
@@ -96,7 +96,7 @@ public struct Seat: Codable, Equatable, Sendable {
         self.stack = stack
     }
 
-    /// True once the player has no chips left or was removed.
+    /// True once the player has a final rank: busted at the end of a hand, or removed by the host (from the end of that hand on).
     public var isEliminated: Bool { eliminatedRank != nil }
 }
 
@@ -104,11 +104,11 @@ public struct Seat: Codable, Equatable, Sendable {
 public enum Phase: String, Codable, Equatable, Sendable {
     /// Players are joining and seats can be arranged; no hand has started.
     case lobby
-    /// A hand is being played and `GameState.toActIndex` names the player to act.
+    /// A hand is being played and ``GameState/toActIndex`` names the player to act.
     case betting
     /// Betting is over and the dealer reports the winner of each pot.
     case showdown
-    /// The hand is paid out and waits for `Command.startNextHand`.
+    /// The hand is paid out and waits for ``Command/startNextHand``.
     case handComplete
     /// One player holds all chips; the tournament is over.
     case finished

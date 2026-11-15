@@ -24,7 +24,7 @@ public enum ClientFailure: Equatable, Sendable {
     case tableFull
     /// The tournament already started and this client has no seat in it.
     case gameInProgress
-    /// The host removed this player.
+    /// The player lost their seat: removed by the host, or their join was undone.
     case removed
     /// The host ended the table.
     case tableClosed
@@ -47,7 +47,7 @@ public enum ClientError: Error, Equatable {
 public actor TableClient {
     /// Connection and game updates; finishes after `.failed`.
     public nonisolated let events: AsyncStream<ClientEvent>
-    /// Reconnect token from the last `welcome`; nil until the first one.
+    /// Reconnect token: the one passed to init, then the one from the latest `welcome`; nil if neither.
     public private(set) var token: String?
     /// The newest state received; nil before the first.
     public private(set) var lastState: GameState?
