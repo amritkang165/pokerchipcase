@@ -38,3 +38,6 @@ extension Game {
         try apply(.act(player: p, action: action), by: p, at: now)
     }
 }
+
+/// Parses space-separated cards such as "Ah Tc 2s".
+func cards(_ text: String) -> [Card] { text.split(separator: " ").map { Card(String($0))! } }

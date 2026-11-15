@@ -32,6 +32,10 @@ PokerCore holds the pure game logic: a ``Game`` applies ``Command`` values to a 
 - ``Action``
 - ``Rejection``
 
+### Cards
+
+- ``Card``
+
 ### Wire types
 
 - ``Wire``
