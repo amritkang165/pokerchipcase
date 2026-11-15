@@ -8,7 +8,23 @@ import SwiftUI
 /// Debug builds only: fills the host's lobby with in-process guests that check, call or raise on their turn,
 /// so a full table can be played on one simulator.
 @MainActor enum DebugBots {
-    private static let names = ["foo", "bar", "baz", "qux", "quux", "corge", "grault", "Maximilian-Alexander", "garply"]
+    /// Shuffled per fill, so every screenshot shows different, realistic names. The long one tests truncation.
+    private static let names = [
+        "Ace High", "Bluff Daddy", "Chip Chopper", "River Rat", "Lucky Lou", "Pocket Rocket", "Big Slick",
+        "Nuts McGee", "Tilt Master", "All-In Annie", "Card Shark", "Fishy Fred", "The Professor", "Donk",
+        "Royal Flush", "Snake Eyes", "Slow Roll", "Check Raise", "Full House Fritz", "Queen Bee", "Jackpot Jo",
+        "King Kev", "Deuce Dora", "Trips Tina", "Gutshot Gus", "Kicker", "Muck Duck", "Short Stack",
+        "Big Blind Bob", "Small Blind Sue", "Dealer Dan", "Button Betty", "Nit Wit", "Calling Station", "Whale",
+        "Maverick", "Iceman", "Sundance", "Cool Hand", "The Grinder", "Mister Chips", "Lady Luck", "Wild Card",
+        "Joker", "Poker Face", "Stone Cold", "Monte", "Vegas Vic", "Reno Rita", "Atlantic Al", "Felt Burner",
+        "Chip Leader", "Rainbow", "Flopzilla", "Turn Burn", "Nine High", "Seven Deuce", "Hammer", "Cowboy", "Ladies",
+        "Hooks", "Snowmen", "Ducks", "Fishhooks", "Pocket Kings", "Suited Connector", "Backdoor Barry", "Overbet Olga",
+        "Min-Raise Max", "Limp Larry", "Straddle Steve", "Ante Up", "Bubble Boy", "Satellite Sam", "Final Table",
+        "Heads Up", "Dead Money", "Busto", "Rebuy Rick", "Freeroll Franzi", "Bad Beat Bernd", "Cooler Carl",
+        "Suckout Susi", "Rungood Rudi", "Variance Vera", "Equity Eddie", "Range Ronja", "Bluffmaster Flex", "Tellmann",
+        "Sunglasses Sam", "Hoodie Hank", "Moneybags", "Cashout Chris", "Dolly Draw", "Stack Stu", "Fold Phil",
+        "Fold Pre", "Snap Call", "Tank Tom", "Maximilian-Alexander",
+    ]
     // ponytail: bots are never torn down; they idle after the table ends. Add cleanup if they get in the way.
     private static var bots: [(TableSession, Task<Void, Never>)] = []
 
@@ -39,7 +55,7 @@ import SwiftUI
         var snapshot = HostSnapshot.newTable(hostName: hostName, tableName: tableName, config: .relaxed)
         let host = snapshot.game.state.hostID
         let now = Date()  // One date, so the blinds never rise.
-        for name in names { try snapshot.game.apply(.join(player: UUID().uuidString, name: name), by: host, at: now) }
+        for name in names.shuffled().prefix(maxSeats - 1) { try snapshot.game.apply(.join(player: UUID().uuidString, name: name), by: host, at: now) }
         try snapshot.game.apply(.startTournament(button: host), by: host, at: now)
         while snapshot.game.state.handNumber <= hands, snapshot.game.state.phase != .finished {
             let state = snapshot.game.state
@@ -75,7 +91,7 @@ import SwiftUI
     static func fill(_ host: TableSession, count: Int, speed: BotSpeed = .fast, style: BotStyle = .call) {
         let seated = host.state?.seats.map(\.name) ?? []
         let free = max(0, maxSeats - seated.count)
-        for name in names.filter({ !seated.contains($0) }).prefix(min(count, free)) {
+        for name in names.shuffled().filter({ !seated.contains($0) }).prefix(min(count, free)) {
             Task {
                 // Bonjour, like a real guest; a throwaway ticket file so the real seat ticket stays untouched.
                 let bot = await TableSession.join(
