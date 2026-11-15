@@ -23,10 +23,12 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
     public private(set) var me: PlayerID?
     public private(set) var connection: ConnectionStatus = .connecting
     public private(set) var isSending = false
+    /// Number of `state` events handled; lets tests wait for one that changes nothing.
+    private(set) var stateEvents = 0
     /// Reason of the last rejected command; cleared by `send` and by the next state newer than the one
     /// it was rejected on.
     public private(set) var rejection: Rejection?
-    /// `state.version` the host had when it rejected the command behind `rejection`.
+    /// `state.version` the host had at or after it rejected the command behind `rejection`.
     private var rejectedAt = 0
     /// Last failed save, delete, send or listener restart; cleared when that action works again
     /// (`.send`: by the next `send`).
@@ -141,11 +143,23 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         }
     }
 
-    /// Disconnects; the host also ends the table for everyone. Deletes this device's save file and
-    /// returns false if that failed (`problem` says why; calling `leave()` again retries).
+    /// Disconnects; a guest in the lobby gives up their seat first, the host also ends the table for everyone.
+    /// Deletes this device's save file and returns false if that failed (`problem` says why; calling `leave()`
+    /// again retries).
     @discardableResult public func leave() async -> Bool {
         eventTask?.cancel()
         saveTask?.cancel()
+        if !isHost, state?.phase == .lobby, let me {
+            // A silent host must not hold the leave back for the whole ackTimeout: disconnecting fails the send.
+            let giveUp = Task { [client] in
+                try await Task.sleep(for: .seconds(2))
+                await client.disconnect()
+            }
+            // ponytail: one attempt. A change racing the leave rejects it as staleState and the seat stays
+            // until the host removes it; retry once on that rejection if it shows.
+            _ = try? await client.send(.removePlayer(player: me))
+            giveUp.cancel()
+        }
         await client.disconnect()
         await tableHost?.end()
         return record(.delete) { try saveFile?.delete(); try ticketFile?.delete() }
@@ -189,6 +203,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
             record(.save) { try ticketFile?.save(SeatTicket(tableName: tableName, code: code, name: name, token: welcome.token)) }
         case let .state(new):
             state = new
+            stateEvents += 1
             if new.version > rejectedAt { rejection = nil }
         case .connectionLost:
             connection = .reconnecting
