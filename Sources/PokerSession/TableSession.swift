@@ -56,10 +56,12 @@ public enum ConnectionStatus: Equatable, Sendable {
     /// Reason of the last rejected command; cleared by `send` and by the next state newer than the one
     /// it was rejected on.
     public private(set) var rejection: Rejection?
-    /// `state.version` the host had at or after it rejected the command behind `rejection`.
+    /// `state.version` the host had at or after it rejected the command behind `rejection`, or the last
+    /// version this device knew when that command failed to send.
     private var rejectedAt = 0
     /// Last failed save, delete, send or listener restart; cleared when that action works again
-    /// (`.send`: by the next `send`).
+    /// (`.send`: by the next `send` and by the next newer state, since a host that was suspended may still
+    /// apply the command).
     public private(set) var problem: SessionProblem?
 
     /// The session that replaces this one after a host handover; nil otherwise. Switch to it as soon as it
@@ -172,6 +174,7 @@ public enum ConnectionStatus: Equatable, Sendable {
                 rejection = reason
             }
         } catch {
+            rejectedAt = await client.lastState?.version ?? 0
             record(.send, error)
         }
     }
@@ -262,7 +265,10 @@ public enum ConnectionStatus: Equatable, Sendable {
         case let .state(new):
             state = new
             stateEvents += 1
-            if new.version > rejectedAt { rejection = nil }
+            if new.version > rejectedAt {
+                rejection = nil
+                if problem?.action == .send { problem = nil }
+            }
         case let .handover(handover):
             Task { await takeOver(handover) }
         case .connectionLost:
