@@ -14,14 +14,17 @@ struct TableSurface: View {
         GeometryReader { geo in
             let d = min(geo.size.width, geo.size.height)
             ZStack {
-                // Its own layer under the rail, so the glow does not blur the drop shadow too.
-                if let glow = theme.rail.glow { Circle().fill(glow).shadow(color: glow, radius: 0.07 * d) }
+                // Drop shadow, glow and rail in separate layers, bottom up: the glow lies over the
+                // dark drop shadow instead of under it, and neither blurs the other.
+                // The palette is picked from the scheme, so the scheme says whether the stage is dark.
+                Circle().fill(railFill)
+                    .shadow(color: .black.opacity(scheme == .dark ? 0.6 : 0.35), radius: 0.07 * d, y: 0.04 * d)
+                // An opaque fill: a translucent one would weaken the shadow by its own alpha.
+                if let glow = theme.rail.glow { Circle().fill(railFill).shadow(color: glow, radius: 0.07 * d) }
                 Circle().fill(railFill)
                     .overlay { relief }
                     .overlay { grain(d) }
                     .overlay { Circle().strokeBorder(theme.rail.edge, lineWidth: 1) }
-                    // The palette is picked from the scheme, so the scheme says whether the stage is dark.
-                    .shadow(color: .black.opacity(scheme == .dark ? 0.6 : 0.35), radius: 0.07 * d, y: 0.04 * d)
                 Circle().fill(theme.cushion).padding(Self.rail * d)
                 // Lit from a lamp above the middle, darker toward the cushion.
                 Circle()
