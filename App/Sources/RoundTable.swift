@@ -35,10 +35,7 @@ struct RoundTable: View {
             let size = geo.size
             let seats = state.tableOrder(viewer: viewer)
             ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: theme.surface, center: .center, startRadius: 0, endRadius: size.width / 2))
-                    .overlay(Circle().strokeBorder(theme.cushion, lineWidth: 7))
-                    .padding(seatWidth(in: size) / 2 - 8)
+                TableSurface().padding(seatWidth(in: size) / 2 - 8)
                 if state.config.digitalCards {
                     // The board sits just above the center. The pot, or after the payout the winning hands and
                     // the winners, hang below it as an overlay: they move with the board and can never cover it.
@@ -62,7 +59,7 @@ struct RoundTable: View {
                         let at = toward(point, 0.5, in: size)
                         // When the betting round ends, the bet slides into the pot.
                         // ponytail: no pot-to-winner animation yet; add it once the rest feels right.
-                        bet(seat.roundBet).position(at).transition(.asymmetric(
+                        bet(seat.roundBet).foregroundStyle(theme.onTable).position(at).transition(.asymmetric(
                             insertion: .opacity,
                             removal: .offset(x: size.width / 2 - at.x, y: size.height / 2 - at.y).combined(with: .opacity)))
                     }
@@ -113,6 +110,7 @@ struct RoundTable: View {
             }
         }
         .font(.footnote)
+        .foregroundStyle(theme.seatText)
         .lineLimit(1)
         .minimumScaleFactor(0.7)
         .padding(.horizontal, 5).padding(.vertical, 2)
@@ -122,6 +120,8 @@ struct RoundTable: View {
             if acting {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(theme.accent, lineWidth: 2)
                     .phaseAnimator([1.0, 0.4]) { ring, opacity in ring.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.8) }
+                    // Glowing rails get a glowing ring.
+                    .shadow(color: theme.rail.glow == nil ? .clear : theme.accent, radius: theme.rail.glow == nil ? 0 : 4)
             } else {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(
                     borderColor(look),
@@ -175,6 +175,7 @@ struct RoundTable: View {
             Text(winners.map(\.0.name).joined(separator: ", ")).font(.caption.bold())
         }
         .lineLimit(1).minimumScaleFactor(0.7)
+        .foregroundStyle(theme.onTable)
     }
 
     private var pot: some View {
@@ -186,16 +187,18 @@ struct RoundTable: View {
             }
             if state.pots.count > 1 {
                 Text(state.pots.indices.map { potName($0, of: state.pots.count) + " " + state.pots[$0].amount.formatted() }.joined(separator: " · "))
-                    .font(.caption2).foregroundStyle(theme.muted)
+                    // Not theme.muted: that is tuned for the room, this sits on the felt.
+                    .font(.caption2).foregroundStyle(theme.onTable.opacity(0.7))
             }
         }
+        .foregroundStyle(theme.onTable)
     }
 
     private func borderColor(_ mark: SeatMark) -> Color {
         switch mark {
         case .selected: theme.accent
         case .selectable: theme.muted
-        case .normal, .dimmed: .clear
+        case .normal, .dimmed: theme.seatBorder
         }
     }
 

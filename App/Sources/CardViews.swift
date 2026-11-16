@@ -120,7 +120,7 @@ struct CardSlotView: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: width * 0.12)
-            .strokeBorder(theme.cardFrame.opacity(0.25), lineWidth: max(1, width * 0.03))
+            .strokeBorder(theme.onTable.opacity(0.25), lineWidth: max(1, width * 0.03))
             .modifier(CardShape(width: width))
             .accessibilityHidden(true)
     }

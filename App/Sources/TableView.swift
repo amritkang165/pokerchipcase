@@ -52,7 +52,7 @@ struct TableView: View {
         }
         // No side padding for the table: the seat labels use the full width.
         .foregroundStyle(theme.text)
-        .background(theme.background.ignoresSafeArea())
+        .background { RoomBackground() }
         .tint(theme.accent)
         .toolbarBackground(theme.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
