@@ -22,8 +22,10 @@ struct HandoverTests {
     /// Over Bonjour, like on real devices: the guests find the new host by the table name.
     @Test func handoverMovesTheTableToAGuest() async throws {
         let name = uniqueName()
-        let annaSave: SaveFile<HostSnapshot> = tempFile(), benSave: SaveFile<HostSnapshot> = tempFile()
-        let annaTicket: SaveFile<SeatTicket> = tempFile(), benTicket: SaveFile<SeatTicket> = tempFile()
+        let annaSave: SaveFile<HostSnapshot> = tempFile()
+        let benSave: SaveFile<HostSnapshot> = tempFile()
+        let annaTicket: SaveFile<SeatTicket> = tempFile()
+        let benTicket: SaveFile<SeatTicket> = tempFile()
         let service = NWEndpoint.service(name: name, type: Wire.serviceType, domain: "local.", interface: nil)
         let anna = try await TableSession.host(
             .newTable(hostName: "Anna", tableName: name, code: code4711, config: .relaxed),
@@ -41,7 +43,8 @@ struct HandoverTests {
 
         await anna.send(.transferHost(to: ben.me!))
         try await eventually(timeout: .seconds(30)) { anna.successor != nil && ben.successor != nil }
-        let newHost = ben.successor!, oldHost = anna.successor!
+        let newHost = ben.successor!
+        let oldHost = anna.successor!
         defer { Task { await oldHost.leave(); await newHost.leave() } }
         try await eventually(timeout: .seconds(30)) {
             await newHost.tableHost!.connectedPlayers == [anna.me!, ben.me!, cem.me!]
@@ -84,7 +87,8 @@ struct HandoverTests {
     /// The seat ticket could not be written: the old host's save is then the only way back, so it stays.
     @Test func oldHostKeepsItsSaveWhenTheSeatTicketCannotBeWritten() async throws {
         let name = uniqueName()
-        let annaSave: SaveFile<HostSnapshot> = tempFile(), annaTicket: SaveFile<SeatTicket> = tempFile()
+        let annaSave: SaveFile<HostSnapshot> = tempFile()
+        let annaTicket: SaveFile<SeatTicket> = tempFile()
         try FileManager.default.createDirectory(at: annaTicket.url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try setReadOnly(annaTicket, true)
         defer { try? setReadOnly(annaTicket, false) }
@@ -100,7 +104,8 @@ struct HandoverTests {
 
         await anna.send(.transferHost(to: ben.me!))
         try await eventually(timeout: .seconds(30)) { anna.successor != nil && ben.successor != nil }
-        let newHost = ben.successor!, oldHost = anna.successor!
+        let newHost = ben.successor!
+        let oldHost = anna.successor!
         defer { Task { await oldHost.leave(); await newHost.leave() } }
         try await eventually(timeout: .seconds(30)) { oldHost.connection == .connected }
         #expect(oldHost.problem?.action == .save)
