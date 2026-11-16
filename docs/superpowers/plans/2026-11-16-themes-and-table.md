@@ -15,7 +15,7 @@
 - App-only. `Sources/PokerCore`, `Sources/PokerNet`, `Sources/PokerSession` and the wire protocol are not touched.
 - iOS 17 deployment target. Swift 6 language mode; fix concurrency errors, do not silence them.
 - Everything is drawn in code. No image or texture assets.
-- The table stays a circle. Its size rule in `RoundTable` (`max(height * 0.43, height - 338)`) and `seatPoint` do not change.
+- The table stays a circle. Its size rule in `RoundTable` (`max(height * 0.43, height - 338)`) and `seatPoint` do not change, except in Task 4, which changes 338 to 300.
 - Chips keep their drawing. No animation changes.
 - Settings are per device and never synced.
 - All colors come from the palette tables in the spec, copied exactly. "Alpha in percent" there means `.opacity()`.
@@ -322,6 +322,43 @@ plus the build check. Expected: all pass.
 ```bash
 git add App/Sources README.md docs/images
 git commit -m "feat(app): readable screens in every palette, new screenshots"
+```
+
+---
+
+### Task 4: Larger table on small phones
+
+Added after Tasks 1-3 were planned; see the spec section "Table size on small phones".
+
+**Files:**
+
+- Modify: `App/Sources/RoundTable.swift:70-76`, `App/Sources/TableView.swift:26-46`
+
+**Interfaces:**
+
+- Consumes: nothing new.
+
+- [ ] **Step 1: Change the reserve**
+
+`RoundTable.swift:76`: `max(height * 0.43, height - 300)`. Rewrite the comment above it: 300 points stay for the rest of the screen; on an iPhone SE the stack number shrinks while the dealer banner shows, so the table keeps its size.
+
+- [ ] **Step 2: Find the tallest case on the SE**
+
+Launch on `SE3 test` with `-debugTable -debugStop turn -playerName Du -digitalCards NO -theme felt -appearance light` (Du is the dealer at the first hand, so the dealer banner shows; it is Du's turn, so the raise slider shows). Screenshot and read it. Expected before the fix: the action bar or the quick picks are pushed below the screen or overlap the stack block.
+
+- [ ] **Step 3: Fit it**
+
+In `TableView`, while the dealer banner shows, the large stack number uses a smaller font. Pick the largest size that fits on the SE in step 2's case. If even 24 points do not fit, also make the banner a single compact line. The table must not change size between a hand with and without the banner: compare the table's position in two screenshots, one with `-digitalCards NO` (banner) and one with `-digitalCards YES` (no banner, hole cards).
+
+- [ ] **Step 4: Check**
+
+Build check, then on `SE3 test`: the step 2 case, the same with `-digitalCards YES`, and `-debugStop showdown`. Expected: nothing overlaps, nothing is cut off, ten seats do not overlap each other, the board or the pot. On `iPhone 17 test`: Felt light `-debugStop turn`. Expected: the table looks exactly as before this task.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add App/Sources
+git commit -m "feat(app): larger table on small phones"
 ```
 
 ---

@@ -44,7 +44,7 @@ The HTML sources are in `.superpowers/brainstorm/79585-1794858420/content/` (`th
 The work has failed, even if it builds, when:
 
 - the table is not a circle. The owner chose round so that a glance at a neighbor's phone shows the same table;
-- the table changes size, or the 338-point rule in `RoundTable` changes;
+- the table grows or shrinks while a hand is played, or changes size on phones where it already fills the screen width;
 - ten seats on an iPhone SE overlap each other, the board or the pot;
 - a light stage glares. The light room grounds are mid-tones on purpose, not near-white;
 - light and dark of one theme are hard to tell apart.
@@ -189,6 +189,14 @@ Royal's chrome is the one exception to the rail rule in value, not in material: 
 
 Felt, Rubin and Royal use the cream card face `f6efdf`, black `16181d` and red `c0392b` in both stages.
 
+### Table size on small phones
+
+Added after the owner compared four sizes on an iPhone SE and an iPhone 17 Pro Max (mockup `table-size-v3.html`, local) and picked a larger table on the SE, with seat labels that keep their share of the table.
+
+- `RoundTable` reserves 300 points for the rest of the screen instead of 338: `max(height * 0.43, height - 300)`. The seat label width stays `0.215` of the table.
+- On an iPhone SE this makes the table 303 instead of 265 points. Phones where the table already fills the screen width do not change.
+- The 38 points came from the slack below "To call". The tallest rest of the screen, a real-cards hand with the dealer banner and the raise slider, must still fit on the SE without the table changing size: first shrink the large stack number while the dealer banner shows, then, if that is not enough, make the banner more compact. The builder measures this in the simulator.
+
 ### Theme settings
 
 Two rows replace the "Felt / Dark / System" picker:
@@ -249,6 +257,13 @@ Plain form rows with a live preview of two cards and a back:
 - Four-color deck (toggle).
 - Card back pattern (six values).
 - Card back color (five values, as today).
+
+## Later
+
+Chosen by the owner for a later stage, not part of PR 1 or PR 2:
+
+- **Blind clock on large iPhones.** Where the screen leaves room below "To call" (an iPhone 17 Pro Max has about 90 points), show a bar with the time gone in the current level, the time left, and the next two levels. Phones without the room show the header as today. Mockup `big-phone-space-v3.html`, option C, local.
+- **The area is configurable** (owner's request). A per-device setting picks what fills it: blind clock (default), best hand, or nothing. Best hand shows the viewer's best hand from hole cards and board with the five cards that make it (mockup option B); in a game without digital cards it falls back to the blind clock (author's proposal, not yet confirmed). Phones without the room do not show the setting.
 
 ## Decisions made while writing
 
