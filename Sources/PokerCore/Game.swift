@@ -93,7 +93,7 @@ extension GameState {
         case let .removePlayer(player):
             guard actor == hostID || (phase == .lobby && actor == player) else { throw .notHost }
             guard player != hostID else { throw .illegalAction }
-            guard let i = index(of: player), !seats[i].isEliminated else { throw .unknownPlayer }
+            guard let i = index(of: player), !seats[i].isOut else { throw .unknownPlayer }
             if phase == .lobby {
                 seats.remove(at: i)
             } else {
