@@ -40,3 +40,20 @@ private func value(_ text: String) -> HandValue { evaluate(cards(text)) }
     let board = "Ah Kh Qh Jh Th"
     #expect(evaluate(cards("2c 3d " + board)) == evaluate(cards("9s 9d " + board)))
 }
+
+@Test func sevenCardEdgeCases() {
+    let fullHouse = value("Ah Ad Ac Kh Kd Kc 2s")
+    #expect(fullHouse.category == .fullHouse && fullHouse.ranks == [14, 13])
+    for text in ["Ah Ad Kh Kd Qh Qd Js", "Ah Ad Kh Kd Qh Qd 2s"] {
+        let twoPair = value(text)
+        #expect(twoPair.category == .twoPair && twoPair.ranks == [14, 13, 12])
+    }
+    let wheelFlush = value("Ah 2h 3h 4h 5h")
+    #expect(wheelFlush.category == .straightFlush && wheelFlush.ranks == [5])
+    #expect(wheelFlush < value("2h 3h 4h 5h 6h"))
+    #expect(value("9h 8h 7h 6d 5c Ah 2h").category == .flush)
+    let wheel = value("Ah 2d 3c 4s 5h 5d Kc")
+    #expect(wheel.category == .straight && wheel.ranks == [5])
+    let quads = value("9h 9d 9c 9s Ah Kd 2c")
+    #expect(quads.category == .fourOfAKind && quads.ranks == [9, 14])
+}
