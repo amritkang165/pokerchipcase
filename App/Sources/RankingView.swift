@@ -32,21 +32,20 @@ struct RankingView: View {
         .padding(.horizontal)
     }
 
-    /// One row per player in ranking order; with digital cards also the cards and hand each player showed in the last hand.
+    /// One row per player in ranking order; with digital cards also the cards and hand of each player in the last showdown.
     private var ranking: some View {
         let cards = !revealed.isEmpty
         return Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
-            GridRow {
-                Text("Name")
-                if cards {
+            if cards {
+                GridRow {
+                    Text("Name")
                     Text("Cards")
                     Text("Hand")
                 }
-                Text("Chips").gridColumnAlignment(.trailing)
+                .font(.caption).foregroundStyle(theme.muted)
             }
-            .font(.caption).foregroundStyle(theme.muted)
             ForEach(Array(state.ranking.enumerated()), id: \.element.id) { i, seat in
-                Divider()
+                if cards || i > 0 { Divider() }
                 GridRow {
                     Text("\(i + 1). \(seat.name)").fontWeight(i == 0 ? .bold : .regular)
                     if cards {
@@ -54,14 +53,13 @@ struct RankingView: View {
                         if shown { CardsText(cards: seat.holeCards) } else { Text("") }
                         Text(shown ? state.handValue(of: seat)?.name ?? "" : "").foregroundStyle(theme.muted)
                     }
-                    // Only the winner holds chips at the end.
-                    Text(seat.stack > 0 ? "\(seat.stack)" : "").monospacedDigit().bold()
                 }
                 .accessibilityElement(children: .combine)
             }
         }
         .lineLimit(1)
         .minimumScaleFactor(0.7)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(theme.seat, in: .rect(cornerRadius: 10))
     }
