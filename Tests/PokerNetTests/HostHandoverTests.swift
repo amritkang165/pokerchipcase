@@ -57,9 +57,9 @@ struct HostHandoverTests {
 
     /// A suspended app keeps its TCP connection but sends nothing.
     @Test func silentTargetIsRejectedUntilItPings() async throws {
-        let t = try await Table.open(liveWindow: .milliseconds(500))
+        let t = try await Table.open(liveWindow: .seconds(2))
         let version = try await start(t)
-        try await Task.sleep(for: .milliseconds(700))
+        try await Task.sleep(for: .milliseconds(2500))
         t.anna.send(t.command(.transferHost(to: t.benWelcome.player), version: version))
         #expect(try await t.anna.ack().result == .rejected(reason: .playerOffline))
         t.ben.send(.ping)
