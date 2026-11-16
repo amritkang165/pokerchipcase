@@ -64,8 +64,13 @@ struct HostLobbyTests {
     @Test func seatNameIsTrimmedCutAndNeverEmpty() {
         #expect(TableHost.seatName("  Ben \n") == "Ben")
         #expect(TableHost.seatName(String(repeating: "x", count: 1000)) == String(repeating: "x", count: 32))
-        #expect(TableHost.seatName(String(repeating: "👨‍👩‍👧", count: 40)).count == 32)
+        // 18 bytes each: the byte cap stops at 14 whole emoji, never inside one.
+        #expect(TableHost.seatName(String(repeating: "👨‍👩‍👧", count: 40)) == String(repeating: "👨‍👩‍👧", count: 14))
         #expect(TableHost.seatName(" \n ") == "Player")
+        // One Character of 600,001 bytes: the cap must count bytes too.
+        let heavy = TableHost.seatName("a" + String(repeating: "\u{0301}", count: 300_000))
+        #expect(heavy.utf8.count <= TableHost.maxNameBytes)
+        #expect(heavy == "Player")
     }
 
     @Test func longNameIsCutOnJoin() async throws {

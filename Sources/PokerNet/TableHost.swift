@@ -39,13 +39,19 @@ public actor TableHost {
     /// Undo steps a handover carries; the whole history of a long tournament exceeds `MessageChannel.maxMessageSize`.
     static let handoverHistory = 50
 
-    /// Longest seat name a guest gets; names longer than this would bloat every state message,
-    /// and the app's field never needs more.
+    /// Longest seat name a guest gets, in characters; the host cuts longer names, which bloat every state message.
     static let maxNameLength = 32
+    /// Byte limit for the same name: one character can hold any number of combining marks.
+    static let maxNameBytes = 256
 
-    /// The name a guest is seated with: trimmed, at most ``maxNameLength`` characters, "Player" if nothing is left.
+    /// The name a guest is seated with: trimmed, at most ``maxNameLength`` whole characters and ``maxNameBytes``
+    /// bytes, "Player" if nothing is left.
     static func seatName(_ raw: String) -> String {
-        let name = String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxNameLength))
+        var name = ""
+        for c in raw.trimmingCharacters(in: .whitespacesAndNewlines) {
+            guard name.count < maxNameLength, name.utf8.count + c.utf8.count <= maxNameBytes else { break }
+            name.append(c)
+        }
         return name.isEmpty ? "Player" : name
     }
 
