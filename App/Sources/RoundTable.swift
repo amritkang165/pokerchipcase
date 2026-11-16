@@ -39,11 +39,25 @@ struct RoundTable: View {
                     .fill(RadialGradient(colors: theme.surface, center: .center, startRadius: 0, endRadius: size.width / 2))
                     .overlay(Circle().strokeBorder(theme.rim, lineWidth: 7))
                     .padding(seatWidth(in: size) / 2 - 8)
-                pot.position(x: size.width / 2, y: size.height / 2)
+                if state.config.digitalCards {
+                    // The board sits just above the center. The pot, or after the payout the winning hands and
+                    // the winners, hang below it as an overlay: they move with the board and can never cover it.
+                    board(cardWidth: size.width * 0.085)
+                        .overlay(alignment: .bottom) {
+                            // Narrower than the gap between the side labels, so a long line shrinks or truncates instead of covering them.
+                            Group { if handWinners.isEmpty { pot } else { winnerLines } }
+                                .frame(width: size.width * 0.5).fixedSize(horizontal: false, vertical: true)
+                                .alignmentGuide(.bottom) { $0[.top] - 8 }
+                        }
+                        .position(x: size.width / 2, y: size.height * 0.46)
+                } else {
+                    pot.position(x: size.width / 2, y: size.height / 2)
+                }
                 ForEach(Array(seats.enumerated()), id: \.element.id) { i, seat in
                     let point = seatPoint(index: i, count: seats.count, in: size)
                     // Only while betting: at showdown the bets are already counted in the pot.
-                    if state.phase == .betting, seat.roundBet > 0 {
+                    // Digital games show the bet in the seat label: here it would cover the board.
+                    if !state.config.digitalCards, state.phase == .betting, seat.roundBet > 0 {
                         // Halfway: further out, a bet next to a side seat overlaps its label.
                         let at = toward(point, 0.5, in: size)
                         // When the betting round ends, the bet slides into the pot.
@@ -59,17 +73,22 @@ struct RoundTable: View {
         }
         .aspectRatio(1, contentMode: .fit)
         // From the screen height, not the space left over: that changes with the phase and
-        // the dealer hint, and the table would grow and shrink with it. The share leaves room for
-        // the tallest rest of the screen on an iPhone SE: header, stack and the raise slider.
-        .containerRelativeFrame(.vertical) { height, _ in height * 0.43 }
+        // the dealer hint, and the table would grow and shrink with it. 338 points are the tallest
+        // rest of the screen on an iPhone SE: header, stack and the raise slider. That is 57 % of its
+        // height; taller phones give everything above those points to the table, up to the screen width.
+        .containerRelativeFrame(.vertical) { height, _ in max(height * 0.43, height - 338) }
         // The layout constants assume at most this size; larger text would overlap the seats.
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
     private func seatLabel(_ seat: Seat, width: CGFloat) -> some View {
         let mark = seatState(seat)
+        // Drawn like a picked winner, without the check mark.
+        let look = wonWithHand(seat) ? SeatMark.selected : mark
         let acting = state.toActIndex.map { state.seats[$0].id } == seat.id
         let delta = seat.stack - seat.stackAtHandStart
+        let showsDelta = state.phase == .handComplete && delta != 0
+        let deltaText = Text(delta > 0 ? "+\(delta)" : "−\(-delta)").foregroundStyle(delta > 0 ? Color.green : .red)
         return VStack(spacing: 1) {
             HStack(spacing: 3) {
                 // Inside the label, so it can never collide with a neighbour, a bet or the pot.
@@ -78,13 +97,19 @@ struct RoundTable: View {
             }
             HStack(spacing: 3) {
                 // One Text, so stack, delta and check mark shrink together instead of wrapping one by one.
-                (Text("\(seat.stack)").monospacedDigit()
-                    + (state.phase == .handComplete && delta != 0
-                        ? Text(delta > 0 ? " +\(delta)" : " −\(-delta)").foregroundStyle(delta > 0 ? .green : .red)
-                        : Text(""))
+                // At hand end the delta stands in for the stack, so "+5.040" is never cut to "…";
+                // the next hand shows the stack again.
+                ((showsDelta ? deltaText : Text("\(seat.stack)")).monospacedDigit()
                     + Text(mark == .selected ? " ✓" : ""))
                     .bold().contentTransition(.numericText())
-                if seat.allIn { tag("All-in") }
+                // The hand is over, and the tag would squeeze the delta.
+                if seat.allIn, state.phase != .handComplete { tag("All-in") }
+            }
+            // One extra row at most: the bet while betting, the cards from the showdown on.
+            if state.config.digitalCards, state.phase == .betting, seat.roundBet > 0 {
+                bet(seat.roundBet)
+            } else if revealed(seat) {
+                CardsText(cards: seat.holeCards).font(.caption2)
             }
         }
         .font(.footnote)
@@ -92,15 +117,15 @@ struct RoundTable: View {
         .minimumScaleFactor(0.7)
         .padding(.horizontal, 5).padding(.vertical, 2)
         .frame(maxWidth: width)
-        .background(mark == .selected ? theme.accent.opacity(0.35) : theme.seat, in: .rect(cornerRadius: 8))
+        .background(look == .selected ? theme.accent.opacity(0.35) : theme.seat, in: .rect(cornerRadius: 8))
         .overlay {
             if acting {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(theme.accent, lineWidth: 2)
                     .phaseAnimator([1.0, 0.4]) { ring, opacity in ring.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.8) }
             } else {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(
-                    borderColor(mark),
-                    lineWidth: mark == .selected ? 2 : 1)
+                    borderColor(look),
+                    lineWidth: look == .selected ? 2 : 1)
             }
         }
         .opacity(seatOpacity(mark, folded: seat.folded))
@@ -110,6 +135,46 @@ struct RoundTable: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(onTapSeat != nil && mark != .dimmed ? .isButton : [])
         .accessibilityAddTraits(mark == .selected ? .isSelected : [])
+    }
+
+    /// The seat's cards are on the table for everyone; only digital games have cards.
+    private func revealed(_ seat: Seat) -> Bool { state.config.digitalCards && state.isRevealed(seat) }
+
+    // ponytail: a winner is a revealed seat that gained chips or holds the best revealed hand (the main-pot winner always does, which covers chops); a side-pot winner with a lesser hand who still lost chips overall is not marked, keep the winners in GameState if that matters
+    private func wonWithHand(_ seat: Seat) -> Bool {
+        guard state.phase == .handComplete, revealed(seat) else { return false }
+        if seat.stack > seat.stackAtHandStart { return true }
+        let best = state.seats.filter(revealed).compactMap { state.handValue(of: $0) }.max()
+        return best != nil && state.handValue(of: seat) == best
+    }
+
+    /// Five places, so the row does not jump while the cards are dealt.
+    private func board(cardWidth: CGFloat) -> some View {
+        HStack(spacing: cardWidth * 0.15) {
+            ForEach(0..<5, id: \.self) { i in
+                ZStack {
+                    CardSlotView(width: cardWidth)
+                    if i < state.board.count { CardFaceView(card: state.board[i], width: cardWidth).transition(.opacity) }
+                }
+            }
+        }
+    }
+
+    /// Revealed seats that won the hand (chips gained or best hand, so chops count), with their hands, in seat order.
+    private var handWinners: [(Seat, HandValue)] {
+        state.seats.filter(wonWithHand).compactMap { seat in state.handValue(of: seat).map { (seat, $0) } }
+    }
+
+    /// After the payout: the winning hands, then the winners, where the empty pot was.
+    private var winnerLines: some View {
+        let winners = handWinners
+        // Each hand once, e.g. "Flush · Two pair" when a side pot went to another hand.
+        let hands = winners.map(\.1.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        return VStack(spacing: 2) {
+            Text(hands.joined(separator: " · ")).font(.caption)
+            Text(winners.map(\.0.name).joined(separator: ", ")).font(.caption.bold())
+        }
+        .lineLimit(1).minimumScaleFactor(0.7)
     }
 
     private var pot: some View {

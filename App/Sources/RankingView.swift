@@ -5,25 +5,62 @@ import SwiftUI
 struct RankingView: View {
     let state: GameState
     let onLeave: () -> Void
+    @Environment(\.theme) private var theme
+
+    /// Seats whose cards were shown in the last hand; the last payout ends the game before the table can show it.
+    private var revealed: [Seat] { state.config.digitalCards ? state.seats.filter(state.isRevealed) : [] }
 
     var body: some View {
         VStack(spacing: 12) {
             Text("Final ranking").font(.title.bold())
-            List(Array(state.ranking.enumerated()), id: \.element.id) { i, seat in
-                HStack {
-                    Text("\(i + 1). \(seat.name)")
-                    if i == 0 {
-                        Spacer()
-                        Text("\(seat.stack)").monospacedDigit().bold()
+            ScrollView {
+                VStack(spacing: 12) {
+                    ranking
+                    if !revealed.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(state.board, id: \.self) { CardFaceView(card: $0, width: 44) }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Board: " + state.board.spokenNames)
                     }
                 }
-                .themedRow()
             }
-            .listStyle(.plain)
             Button("Leave table", action: onLeave)
-            .buttonStyle(ThemeButtonStyle())
-            .padding(.bottom)
+                .buttonStyle(ThemeButtonStyle())
+                .padding(.bottom)
         }
         .padding(.horizontal)
+    }
+
+    /// One row per player in ranking order; with digital cards also the cards and hand of each player in the last showdown.
+    private var ranking: some View {
+        let cards = !revealed.isEmpty
+        return Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
+            if cards {
+                GridRow {
+                    Text("Name")
+                    Text("Cards")
+                    Text("Hand")
+                }
+                .font(.caption).foregroundStyle(theme.muted)
+            }
+            ForEach(Array(state.ranking.enumerated()), id: \.element.id) { i, seat in
+                if cards || i > 0 { Divider() }
+                GridRow {
+                    Text("\(i + 1). \(seat.name)").fontWeight(i == 0 ? .bold : .regular)
+                    if cards {
+                        let shown = revealed.contains { $0.id == seat.id }
+                        if shown { CardsText(cards: seat.holeCards) } else { Text("") }
+                        Text(shown ? state.handValue(of: seat)?.name ?? "" : "").foregroundStyle(theme.muted)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(theme.seat, in: .rect(cornerRadius: 10))
     }
 }

@@ -34,6 +34,8 @@ import SwiftUI
 
     /// Launch argument `-debugStop lobby|turn|showdown|payout`, with `-debugTable`: where the host stops
     /// playing by itself, for screenshots. Without it the host starts the game and plays by hand.
+    /// In a digital game the host pays out at once, so `showdown` and `payout` both stop at the first
+    /// paid-out showdown.
     private static let stop = UserDefaults.standard.string(forKey: "debugStop")
 
     static func autoStart(_ host: TableSession) async {
@@ -43,12 +45,18 @@ import SwiftUI
         await host.send(.startTournament(button: me))
         guard stop == "showdown" || stop == "payout" else { return }
         // The host calls like a bot until the first showdown, then pays the first eligible player per pot.
-        while let state = host.state, state.phase != .showdown {
+        while let state = host.state, !stopsPlaying(state) {
             if let legal = host.legalActions, !host.isSending { await host.act(action(legal, style: .call)) }
             try? await Task.sleep(for: .milliseconds(200))
         }
-        guard stop == "payout", let pots = host.state?.pots else { return }
+        guard stop == "payout", host.state?.phase == .showdown, let pots = host.state?.pots else { return }
         await host.send(.resolveShowdown(winners: pots.map { [$0.eligible.contains(me) ? me : $0.eligible[0]] }))
+    }
+
+    /// The host's loop for `-debugStop showdown|payout` ends here; a digital game never rests in `showdown`.
+    private static func stopsPlaying(_ state: GameState) -> Bool {
+        state.phase == .showdown
+            || state.config.digitalCards && (state.phase == .handComplete || state.phase == .finished)
     }
 
     /// What a bot does on its turn.

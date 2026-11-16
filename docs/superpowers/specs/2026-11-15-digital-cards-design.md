@@ -92,6 +92,8 @@ Updated in the same PR as the wire change:
 
 Five card slots in the center of `RoundTable`, above the pot. Empty slots are a faint outline, so the layout does not jump. Card size scales with the table like the seat labels. New cards fade in.
 
+With 10 seats the bets on their usual ring, halfway between seat and center, would cover the board. In digital games a seat's bet is therefore shown as the third row of its seat label while betting, and no bets are drawn in the center; real-card games keep today's bets.
+
 ### Own hole cards
 
 - Two large cards in the same row as "Your stack", to its left, face down by default. The row keeps its height, so the table keeps its size on an iPhone SE.
@@ -102,8 +104,9 @@ Five card slots in the center of `RoundTable`, above the pot. Empty slots are a 
 ### Showdown
 
 - Revealed hands appear as a third row in the seat label, compact as `A♥ K♠`. ♥ and ♦ use the theme's red. One extra row is the limit: with 10 seats on an iPhone SE a fourth row would touch the neighbouring label.
-- After the payout the table center, where the pot is empty by then, names each seat that won chips in the hand with its hand, one line per seat, e.g. "Anna – Flush". A seat won chips when its stack is above its stack at hand start.
+- After the payout the table center, where the pot is empty by then, shows the winning hand type above the board and the winner names below it, e.g. "Flush" above and "Anna" below. Several winners are joined ("Anna, Ben"), and different winning hands too ("Flush · Two pair"). A seat won when its stack is above its stack at hand start.
 - Those seats also get the accent border, as when picking winners today.
+- In every game, real or digital, the amount a seat won or lost in the hand (the green or red delta after the stack) is always shown in full and never cut to "…". The row shrinks instead, or shows only the delta in place of the stack until the next hand starts; only the name may be truncated.
 
 ### Final hand
 
