@@ -64,6 +64,20 @@ public struct CommandRequest: Codable, Equatable, Sendable {
     }
 }
 
+/// What a guest needs to take the table over: the whole game with its undo steps, hidden cards and deck, and every reconnect token. Sent by a host that hands the table over.
+public struct Handover: Codable, Equatable, Sendable {
+    /// The unredacted game, including the undo steps.
+    public var game: Game
+    /// Every reconnect token and the player it belongs to.
+    public var tokens: [String: PlayerID]
+
+    /// Creates a handover of `game` with the reconnect `tokens`.
+    public init(game: Game, tokens: [String: PlayerID]) {
+        self.game = game
+        self.tokens = tokens
+    }
+}
+
 /// A message from a client to the host.
 public enum ClientMessage: Equatable, Sendable {
     /// Introduces the client; must be the first message on a connection.
@@ -86,6 +100,8 @@ public enum ServerMessage: Equatable, Sendable {
     case error(String)
     /// Answer to ``ClientMessage/ping``, with the ping's envelope `id`.
     case pong
+    /// Tells the receiver to host the table from now on; the sender closes every connection right after.
+    case handover(Handover)
 }
 
 /// Machine-readable codes sent as the payload of `ServerMessage.error`.
@@ -116,10 +132,10 @@ public enum WireError: Error, Equatable {
     case unknownType(String)
 }
 
-/// JSON envelope `{"v": 2, "type": "<case>", "id": "<UUID>", "payload": …}`, see the PokerNet protocol article.
+/// JSON envelope `{"v": 3, "type": "<case>", "id": "<UUID>", "payload": …}`, see the PokerNet protocol article.
 public enum Wire {
     /// Protocol version in the envelope `v` field; a message with another value is refused.
-    public static let version = 2
+    public static let version = 3
     /// Bonjour service type the host advertises and clients browse for.
     public static let serviceType = "_pokerchipcase._tcp"
 
@@ -155,6 +171,7 @@ public enum Wire {
         case let .state(p): try envelope("state", p, id)
         case let .error(p): try envelope("error", p, id)
         case .pong: try envelope("pong", Empty(), id)
+        case let .handover(p): try envelope("handover", p, id)
         }
     }
 
@@ -178,6 +195,7 @@ public enum Wire {
         case "state": return (h.id, .state(try payload(data)))
         case "error": return (h.id, .error(try payload(data)))
         case "pong": return (h.id, .pong)
+        case "handover": return (h.id, .handover(try payload(data)))
         default: throw WireError.unknownType(h.type)
         }
     }

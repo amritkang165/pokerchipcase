@@ -8,6 +8,8 @@ public enum ClientEvent: Equatable, Sendable {
     case welcome(Welcome)
     /// A new game state arrived.
     case state(GameState)
+    /// The host handed the table over to this device; it closes the connection right after.
+    case handover(Handover)
     /// The connection dropped; the client keeps retrying by itself.
     case connectionLost
     /// Final: the client gave up and `events` finishes.
@@ -224,6 +226,8 @@ public actor TableClient {
         case let .state(state):
             lastState = state
             continuation.yield(.state(state))
+        case let .handover(handover):
+            continuation.yield(.handover(handover))
         case let .ack(ack):
             pending.removeValue(forKey: ack.id)?.resume(returning: ack.result)
         case let .error(code):

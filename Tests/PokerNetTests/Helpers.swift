@@ -79,6 +79,7 @@ extension ServerMessage {
     var state: GameState? { if case let .state(s) = self { s } else { nil } }
     var ack: Ack? { if case let .ack(a) = self { a } else { nil } }
     var error: String? { if case let .error(e) = self { e } else { nil } }
+    var handover: Handover? { if case let .handover(h) = self { h } else { nil } }
 }
 
 func hello(_ name: String, token: String? = nil) -> ClientMessage {

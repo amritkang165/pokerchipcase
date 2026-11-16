@@ -240,6 +240,7 @@ public enum ConnectionStatus: Equatable, Sendable {
             state = new
             stateEvents += 1
             if new.version > rejectedAt { rejection = nil }
+        case .handover: break
         case .connectionLost:
             connection = .reconnecting
         case let .failed(failure):
