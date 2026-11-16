@@ -9,6 +9,7 @@ struct TableScreen: View {
     @State private var confirmLeave = false
     @State private var hostPending: HostConfirm?
     @State private var leaveFailed = false
+    @State private var showSettings = false
     /// A send still running after a moment; a fast one shows no banner, which would push the screen down and back.
     @State private var slowSend = false
     @Environment(\.theme) private var theme
@@ -63,6 +64,8 @@ struct TableScreen: View {
                             .disabled(session.isSending)
                         Divider()
                     }
+                    Button("Settings", systemImage: "gearshape") { showSettings = true }
+                    Divider()
                     Button(session.isHost ? "End table" : "Leave table", role: .destructive) { confirmLeave = true }
                 }
             }
@@ -78,6 +81,7 @@ struct TableScreen: View {
             }
             .alert(failureMessage, isPresented: failure) { Button("OK") { leave() } }
         }
+        .sheet(isPresented: $showSettings) { SettingsView() }
     }
 
     private var failureMessage: String {

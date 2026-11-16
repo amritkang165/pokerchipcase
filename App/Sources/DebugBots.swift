@@ -113,33 +113,51 @@ import SwiftUI
         let seated = host.state?.seats.map(\.name) ?? []
         let free = max(0, maxSeats - seated.count)
         for name in names.shuffled().filter({ !seated.contains($0) }).prefix(min(count, free)) {
-            Task {
-                // Loopback, like the host itself: on a device, resolving our own Bonjour service took
-                // so long that the bots joined minutes late, all at once. Real guests still test Bonjour.
-                // A throwaway ticket file, so the real seat ticket stays untouched.
-                let endpoint: NWEndpoint = host.port.map { .hostPort(host: "127.0.0.1", port: $0) }
-                    ?? .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil)
-                // ponytail: bots do not follow a `successor`, so handing over to a bot or away from the bots' host
-                // stalls the debug table. Upgrade: let bots follow `successor`.
-                // Their own save file, so a handover to a bot never touches the device's real host save.
-                let botSave = SaveFile<HostSnapshot>(
-                    url: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString).appending(path: "host.json"))
-                let bot = await TableSession.join(
-                    endpoint: endpoint,
-                    tableName: host.tableName, code: host.code, name: name,
-                    ticketFile: SaveFile(url: .temporaryDirectory.appending(path: "bot-\(name).json")),
-                    saveFile: botSave)
-                let play = Task {
-                    while !Task.isCancelled {
-                        if bot.legalActions != nil, !bot.isSending {
-                            try? await Task.sleep(for: speed.delay)
-                            if let legal = bot.legalActions, !bot.isSending { await bot.act(action(legal, style: style)) }
-                        }
-                        try? await Task.sleep(for: .milliseconds(200))
+            launch(host, name: name, speed: speed, style: style)
+        }
+    }
+
+    /// After a saved table is resumed: reconnects a bot for every seat that has a bot ticket for this table.
+    /// The tickets live in the temporary directory; if the system purged them, use the host menu instead.
+    static func resume(_ host: TableSession, from snapshot: HostSnapshot) {
+        for seat in snapshot.game.state.seats where seat.id != snapshot.game.state.hostID {
+            guard let ticket = ticketFile(seat.name).load(), ticket.code == snapshot.code else { continue }
+            launch(host, name: seat.name, token: ticket.token)
+        }
+    }
+
+    private static func ticketFile(_ name: String) -> SaveFile<SeatTicket> {
+        SaveFile(url: .temporaryDirectory.appending(path: "bot-\(name).json"))
+    }
+
+    /// Joins one bot, or with `token` takes its seat back, and plays its turns until the app quits.
+    private static func launch(_ host: TableSession, name: String, token: String? = nil,
+                               speed: BotSpeed = .fast, style: BotStyle = .call) {
+        Task {
+            // Loopback, like the host itself: on a device, resolving our own Bonjour service took
+            // so long that the bots joined minutes late, all at once. Real guests still test Bonjour.
+            // Its own ticket file, so the real seat ticket stays untouched and `resume` finds the seat again.
+            let endpoint: NWEndpoint = host.port.map { .hostPort(host: "127.0.0.1", port: $0) }
+                ?? .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil)
+            // ponytail: bots do not follow a `successor`, so handing over to a bot or away from the bots' host
+            // stalls the debug table. Upgrade: let bots follow `successor`.
+            // Their own save file, so a handover to a bot never touches the device's real host save.
+            let botSave = SaveFile<HostSnapshot>(
+                url: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString).appending(path: "host.json"))
+            let bot = await TableSession.join(
+                endpoint: endpoint,
+                tableName: host.tableName, code: host.code, name: name, token: token,
+                ticketFile: ticketFile(name), saveFile: botSave)
+            let play = Task {
+                while !Task.isCancelled {
+                    if bot.legalActions != nil, !bot.isSending {
+                        try? await Task.sleep(for: speed.delay)
+                        if let legal = bot.legalActions, !bot.isSending { await bot.act(action(legal, style: style)) }
                     }
+                    try? await Task.sleep(for: .milliseconds(200))
                 }
-                bots.append((bot, play))
             }
+            bots.append((bot, play))
         }
     }
 }
