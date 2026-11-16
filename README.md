@@ -1,6 +1,6 @@
 # <img src="App/Sources/Assets.xcassets/AppIcon.appiconset/icon.png" width="40" alt="App icon"> PokerChipCase
 
-An iOS app that replaces the poker chip case at a Texas Hold'em night among friends – everything except the deck of cards. Players use real cards, every player uses the app on their own iPhone, and betting happens in the app. Play money only, no real money.
+An iOS app that replaces the poker chip case at a Texas Hold'em night among friends – optionally even the deck of cards. Players use real cards or let the app deal, every player uses the app on their own iPhone, and betting happens in the app. Play money only, no real money.
 
 <p>
   <img src="docs/images/lobby.png" width="19%" alt="Lobby with the table code the other players join with">
@@ -27,7 +27,8 @@ No account, no server, no internet. The phones talk directly over the local Wi-F
 - Blind clock with pause and resume
 - Undo for the host
 - The host's table survives an app restart, and players get their seat back after a dropped connection
-- Felt, Dark and System appearance
+- Optional digital cards: the app deals, each player sees only their own hole cards, and the showdown pays out by itself
+- Felt, Dark and System appearance, and a choice of card backs
 
 ## Status
 
