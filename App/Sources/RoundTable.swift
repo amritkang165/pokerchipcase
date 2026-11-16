@@ -146,9 +146,12 @@ struct RoundTable: View {
     /// The seat's cards are on the table for everyone; only digital games have cards.
     private func revealed(_ seat: Seat) -> Bool { state.config.digitalCards && state.isRevealed(seat) }
 
-    // ponytail: "won chips" stands in for "won a pot", so a side-pot winner who still lost chips overall is not marked; keep the winners in GameState if that matters
+    // ponytail: a winner is a revealed seat that gained chips or holds the best revealed hand (the main-pot winner always does, which covers chops); a side-pot winner with a lesser hand who still lost chips overall is not marked, keep the winners in GameState if that matters
     private func wonWithHand(_ seat: Seat) -> Bool {
-        state.phase == .handComplete && revealed(seat) && seat.stack > seat.stackAtHandStart
+        guard state.phase == .handComplete, revealed(seat) else { return false }
+        if seat.stack > seat.stackAtHandStart { return true }
+        let best = state.seats.filter(revealed).compactMap { state.handValue(of: $0) }.max()
+        return best != nil && state.handValue(of: seat) == best
     }
 
     /// Five places, so the row does not jump while the cards are dealt.
@@ -163,7 +166,7 @@ struct RoundTable: View {
         }
     }
 
-    /// Revealed seats that won chips in the hand, with their hands, in seat order.
+    /// Revealed seats that won the hand (chips gained or best hand, so chops count), with their hands, in seat order.
     private var handWinners: [(Seat, HandValue)] {
         state.seats.filter(wonWithHand).compactMap { seat in state.handValue(of: seat).map { (seat, $0) } }
     }
