@@ -22,6 +22,10 @@ public actor TableHost {
     private var port: NWEndpoint.Port?
     /// The most recent `start`; the next one waits for it.
     private var lastStart: Task<NWEndpoint.Port, Error>?
+    /// Counts `stop()` calls; a start that began before the latest stop gives up instead of binding.
+    private var stops = 0
+    /// Tests only: awaited at the start of every bind, to hold a start while the test calls `stop()`.
+    var beforeBind: (@Sendable () async -> Void)?
     private var channels: [UUID: MessageChannel] = [:]
     private var bound: [UUID: PlayerID] = [:]
     private let helloTimeout: Duration
@@ -53,18 +57,24 @@ public actor TableHost {
     public var isListening: Bool { listener?.state == .ready }
 
     /// Starts listening (stopping a previous listener first) and returns the bound port.
+    /// Concurrent calls run one after another in call order. Cancelling a caller does not cancel its bind;
+    /// a `stop()` does, and the start throws `CancellationError`.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
+        let stops = stops
         // Each start waits for the previous one, so two restarts cannot race for the port (#71).
         let task = Task { [lastStart] in
             _ = await lastStart?.result
-            return try await bind(port: port)
+            return try await bind(port: port, stops: stops)
         }
         lastStart = task
         return try await task.value
     }
 
-    private func bind(port: NWEndpoint.Port) async throws -> NWEndpoint.Port {
+    private func bind(port: NWEndpoint.Port, stops: Int) async throws -> NWEndpoint.Port {
+        await beforeBind?()
         await cancelListener()
+        // A table that was stopped while this start waited must not listen and advertise again (#107).
+        guard stops == self.stops else { throw CancellationError() }
         // A start suspended before the handover must not open a listener with the same Bonjour name.
         guard !handedOver else { throw NWError.posix(.ECANCELED) }
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
@@ -112,6 +122,7 @@ public actor TableHost {
 
     /// Stops without telling anyone, like a host that vanished; clients keep reconnecting.
     public func stop() {
+        stops += 1
         port = nil
         listener?.cancel()
         listener = nil

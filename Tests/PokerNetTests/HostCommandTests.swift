@@ -111,6 +111,25 @@ struct HostCommandTests {
         await host.stop()
     }
 
+    /// A start still waiting behind the previous one when the table stops must not listen again (#107).
+    @Test func stopCancelsAStartThatIsStillWaiting() async throws {
+        let (host, _) = try await startHost()
+        let (entered, enter) = AsyncStream<Void>.makeStream()
+        let (release, open) = AsyncStream<Void>.makeStream()
+        await host.setBeforeBind {
+            enter.yield()
+            for await _ in release {
+                // Only waits for the stream to end.
+            }
+        }
+        let start = Task { try await host.start() }
+        for await _ in entered { break }
+        await host.stop()
+        open.finish()
+        await #expect(throws: CancellationError.self) { try await start.value }
+        #expect(await !host.isListening)
+    }
+
     @Test func restartOnTheSamePortWhileListening() async throws {
         let (host, port) = try await startHost()
         #expect(try await host.start(port: port) == port)
@@ -153,4 +172,8 @@ struct HostCommandTests {
         #expect(try await rec.waitForEnd() != nil)
         await host.stop()
     }
+}
+
+extension TableHost {
+    func setBeforeBind(_ hook: @escaping @Sendable () async -> Void) { beforeBind = hook }
 }
