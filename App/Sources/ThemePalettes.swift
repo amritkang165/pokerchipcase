@@ -43,9 +43,11 @@ private extension Theme {
     /// Fills the tokens every palette derives the same way: background and screen are the middle room stop,
     /// muted is the ink at `mutedOpacity` (light stages pass a higher one to stay at 4.5:1 on the screen).
     /// formTint defaults to the accent; where that falls below 4.5:1 on the room, the palette passes its ink.
+    /// The system red and green read on a dark seat fill; a light one (`lightSeat`) gets darker ones.
     init(
         room: [UInt32], surface: [UInt32], rail: Rail, cushion: UInt32, cushionWidth: CGFloat = 0.01, line: Color,
-        seat: Color, seatBorder: Color, seatText: UInt32, text: UInt32, onTable: UInt32, mutedOpacity: Double = 0.65,
+        seat: Color, seatBorder: Color, seatText: UInt32, text: UInt32, onTable: UInt32, onTableShadow: Bool = false,
+        lightSeat: Bool = false, mutedOpacity: Double = 0.65,
         accent: Color, onAccent: Color, formTint: Color? = nil, fold: UInt32, onFold: UInt32 = 0xffffff,
         chips: [Color] = classicChips, card: (face: Color, text: Color, red: Color) = cream
     ) {
@@ -55,7 +57,9 @@ private extension Theme {
             room: room, background: room[1], screen: room[1], surface: surface.map { Color(hex: $0) }, rail: rail,
             cushion: Color(hex: cushion), cushionWidth: cushionWidth, line: line,
             seat: seat, seatBorder: seatBorder, seatText: Color(hex: seatText),
-            text: text, onTable: Color(hex: onTable), muted: text.opacity(mutedOpacity),
+            text: text, onTable: Color(hex: onTable), onTableShadow: onTableShadow,
+            red: lightSeat ? Color(hex: 0xc0392b) : .red, green: lightSeat ? Color(hex: 0x1e7a3a) : .green,
+            muted: text.opacity(mutedOpacity),
             accent: accent, onAccent: onAccent, formTint: formTint ?? accent,
             fold: Color(hex: fold), onFold: Color(hex: onFold), chips: chips,
             cardFrame: .white, cardFace: card.face, cardText: card.text, cardRed: card.red)
@@ -64,7 +68,7 @@ private extension Theme {
     static let feltLight = Theme(
         room: [0x8fd0c6, 0x57a9a0, 0x36877f], surface: [0x5fcf86, 0x3aa862, 0x2b8a4e], rail: .wood, cushion: 0x2a8a50,
         line: gold.opacity(0.7), seat: Color(hex: 0xfffcf4).opacity(0.94), seatBorder: Color(hex: 0x3c280a).opacity(0.25),
-        seatText: 0x1c2a22, text: 0x062522, onTable: 0xfffdf6, mutedOpacity: 0.85,
+        seatText: 0x1c2a22, text: 0x062522, onTable: 0xfffdf6, onTableShadow: true, lightSeat: true, mutedOpacity: 0.85,
         accent: gold, onAccent: goldInk, formTint: Color(hex: 0x062522), fold: 0xc0483a)
 
     static let feltDark = Theme(
@@ -79,7 +83,7 @@ private extension Theme {
                    glow: Color(hex: 0x12b88a).opacity(0.5), grain: false),
         cushion: 0xaab3c2,
         line: Color(hex: 0x12b88a).opacity(0.55), seat: Color.white.opacity(0.95), seatBorder: Color(hex: 0x1a2233).opacity(0.18),
-        seatText: 0x1a2233, text: 0x1a2233, onTable: 0x1a2233, mutedOpacity: 0.85,
+        seatText: 0x1a2233, text: 0x1a2233, onTable: 0x1a2233, lightSeat: true, mutedOpacity: 0.85,
         accent: Color(hex: 0x12b88a), onAccent: Color(hex: 0x06110d), formTint: Color(hex: 0x1a2233), fold: 0xd5dbe6, onFold: 0x1a2233,
         chips: neonChips, card: (Color.white, Color(hex: 0x16181d), Color(hex: 0xd63b3b)))
 
@@ -96,7 +100,7 @@ private extension Theme {
     static let rubyLight = Theme(
         room: [0xdcc8ad, 0xbfa684, 0xa08764], surface: [0xee6f6a, 0xd04a4a, 0xb23638], rail: .leather, cushion: 0xb23638,
         line: gold.opacity(0.75), seat: Color(hex: 0xfffcf6).opacity(0.94), seatBorder: Color(hex: 0x782828).opacity(0.25),
-        seatText: 0x3a1c1c, text: 0x3a1c1c, onTable: 0xfffdf8, mutedOpacity: 0.85,
+        seatText: 0x3a1c1c, text: 0x3a1c1c, onTable: 0xfffdf8, onTableShadow: true, lightSeat: true, mutedOpacity: 0.85,
         accent: gold, onAccent: goldInk, formTint: Color(hex: 0x3a1c1c), fold: 0x8e2f2a)
 
     static let rubyDark = Theme(
@@ -109,7 +113,7 @@ private extension Theme {
         room: [0xb9c9e1, 0x8ea5c7, 0x6b85ac], surface: [0x86b6f7, 0x5b93e6, 0x3f78cf],
         rail: .chrome([0x9aa0aa, 0xe9ecf0, 0x888e98, 0xf4f6f8, 0x9298a2, 0xdde0e5]), cushion: 0xb3243a, cushionWidth: 0.025,
         line: Color(hex: 0xf5d682).opacity(0.9), seat: Color.white.opacity(0.95), seatBorder: Color(hex: 0x14234a).opacity(0.2),
-        seatText: 0x14234a, text: 0x14234a, onTable: 0xffffff, mutedOpacity: 0.85,
+        seatText: 0x14234a, text: 0x14234a, onTable: 0xffffff, onTableShadow: true, lightSeat: true, mutedOpacity: 0.85,
         accent: Color(hex: 0x1f4e9c), onAccent: .white, formTint: Color(hex: 0x14234a), fold: 0xc0483a, chips: royalChips)
 
     static let royalDark = Theme(

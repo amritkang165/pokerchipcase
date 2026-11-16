@@ -29,6 +29,9 @@ struct RoundTable: View {
     var seatState: (Seat) -> SeatMark = { _ in .normal }
     var onTapSeat: ((PlayerID) -> Void)?
     @Environment(\.theme) private var theme
+    /// Points kept for the rest of the screen. Read here, outside the size cap below, so it follows the
+    /// text size the header, stack block and action bar are drawn at.
+    @ScaledMetric private var reserve: CGFloat = 300
 
     var body: some View {
         GeometryReader { geo in
@@ -59,7 +62,7 @@ struct RoundTable: View {
                         let at = toward(point, 0.5, in: size)
                         // When the betting round ends, the bet slides into the pot.
                         // ponytail: no pot-to-winner animation yet; add it once the rest feels right.
-                        bet(seat.roundBet).foregroundStyle(theme.onTable).position(at).transition(.asymmetric(
+                        bet(seat.roundBet).foregroundStyle(theme.onTable).onTableShadow(theme.onTableShadow).position(at).transition(.asymmetric(
                             insertion: .opacity,
                             removal: .offset(x: size.width / 2 - at.x, y: size.height / 2 - at.y).combined(with: .opacity)))
                     }
@@ -70,11 +73,11 @@ struct RoundTable: View {
         }
         .aspectRatio(1, contentMode: .fit)
         // From the screen height, not the space left over: that changes with the phase and
-        // the dealer hint, and the table would grow and shrink with it. 300 points stay for the
-        // rest of the screen; on an iPhone SE the stack number shrinks while the dealer banner
-        // shows, so the table keeps its size. Taller phones give everything above those points
-        // to the table, up to the screen width.
-        .containerRelativeFrame(.vertical) { height, _ in max(height * 0.43, height - 300) }
+        // the dealer hint, and the table would grow and shrink with it. `reserve` stays for the
+        // rest of the screen, 300 points at the default text size and more at larger ones; on an
+        // iPhone SE the stack number shrinks while the dealer banner shows, so the table keeps its
+        // size. Taller phones give everything above those points to the table, up to the screen width.
+        .containerRelativeFrame(.vertical) { height, _ in max(height * 0.43, height - reserve) }
         // The layout constants assume at most this size; larger text would overlap the seats.
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
@@ -86,7 +89,7 @@ struct RoundTable: View {
         let acting = state.toActIndex.map { state.seats[$0].id } == seat.id
         let delta = seat.stack - seat.stackAtHandStart
         let showsDelta = state.phase == .handComplete && delta != 0
-        let deltaText = Text(delta > 0 ? "+\(delta)" : "−\(-delta)").foregroundStyle(delta > 0 ? Color.green : .red)
+        let deltaText = Text(delta > 0 ? "+\(delta)" : "−\(-delta)").foregroundStyle(delta > 0 ? theme.green : theme.red)
         return VStack(spacing: 1) {
             HStack(spacing: 3) {
                 // Inside the label, so it can never collide with a neighbour, a bet or the pot.
@@ -179,6 +182,7 @@ struct RoundTable: View {
         }
         .lineLimit(1).minimumScaleFactor(0.7)
         .foregroundStyle(theme.onTable)
+        .onTableShadow(theme.onTableShadow)
     }
 
     private var pot: some View {
@@ -190,11 +194,12 @@ struct RoundTable: View {
             }
             if state.pots.count > 1 {
                 Text(state.pots.indices.map { potName($0, of: state.pots.count) + " " + state.pots[$0].amount.formatted() }.joined(separator: " · "))
-                    // Not theme.muted: that is tuned for the room, this sits on the felt.
-                    .font(.caption2).foregroundStyle(theme.onTable.opacity(0.7))
+                    // Full onTable, not theme.muted (tuned for the room) or a faded one: light felts leave no room for less.
+                    .font(.caption2)
             }
         }
         .foregroundStyle(theme.onTable)
+        .onTableShadow(theme.onTableShadow)
     }
 
     private func borderColor(_ mark: SeatMark) -> Color {
@@ -234,6 +239,13 @@ struct RoundTable: View {
                     .frame(width: 12, height: 12)
             }
         }
+    }
+}
+
+private extension View {
+    /// A soft dark shadow under light text on a light felt, where the theme asks for it.
+    @ViewBuilder func onTableShadow(_ on: Bool) -> some View {
+        if on { shadow(color: .black.opacity(0.35), radius: 1) } else { self }
     }
 }
 

@@ -132,11 +132,16 @@ struct Theme: Sendable {
     var text: Color
     /// Pot and bets on the felt.
     var onTable: Color
+    /// Light `onTable` text on a light felt gets a soft dark shadow, so it stays readable.
+    var onTableShadow: Bool
+    /// Red and green text on the seat fill, at 4.5:1: errors and losses, wins.
+    var red: Color
+    var green: Color
     var muted: Color
     var accent: Color
     var onAccent: Color
-    /// The accent wherever it is text or a control tint: on the room, the screen and system material (alerts,
-    /// dialogs). The accent itself where that reads at 4.5:1, else the ink. Never used as a button fill.
+    /// Tint for text and controls on room, screen and system material: the accent where it reads at 4.5:1 there,
+    /// else the ink. Never used as a button fill.
     var formTint: Color
     var fold: Color
     var onFold: Color
