@@ -6,6 +6,7 @@ import SwiftUI
 /// (see `hostConfirmation`), because a menu's content is gone once it closes.
 enum HostConfirm: Equatable {
     case remove(PlayerID, String)
+    case handOver(PlayerID, String)
     case undo
     case changeWinner
 }
@@ -24,6 +25,11 @@ struct HostMenu: View {
     /// `removeFromGame` accepts only these phases.
     private var removable: [Seat] {
         guard state.phase == .betting || state.phase == .handComplete else { return [] }
+        return state.seats.filter { $0.id != state.hostID && !$0.isEliminated }
+    }
+
+    private var successors: [Seat] {
+        guard state.phase != .finished else { return [] }
         return state.seats.filter { $0.id != state.hostID && !$0.isEliminated }
     }
 
@@ -55,6 +61,13 @@ struct HostMenu: View {
                 }
             }
         }
+        if !successors.isEmpty {
+            Menu("Hand over table", systemImage: "arrow.left.arrow.right") {
+                ForEach(successors, id: \.id) { seat in
+                    Button(seat.name) { pending = .handOver(seat.id, seat.name) }
+                }
+            }
+        }
         if canChangeWinner {
             Button("Change winner", systemImage: "trophy") { pending = .changeWinner }
         }
@@ -71,6 +84,7 @@ extension View {
         let item = pending.wrappedValue
         let title: String = switch item {
         case let .remove(_, name): "Remove \(name)? Their chips are forfeited."
+        case let .handOver(_, name): "Hand the table over to \(name)? Their phone runs the table from then on."
         case .undo: "Undo the last change for everyone?"
         case .changeWinner: "Undo the payout and pick the winners by hand?"
         case nil: ""
@@ -81,6 +95,7 @@ extension View {
         ) {
             switch item {
             case let .remove(id, _): Button("Remove", role: .destructive) { Task { await session.send(.removePlayer(player: id)) } }
+            case let .handOver(id, _): Button("Hand over") { Task { await session.send(.transferHost(to: id)) } }
             case .undo: Button("Undo", role: .destructive) { Task { await session.send(.undo) } }
             case .changeWinner: Button("Change winner", role: .destructive) { Task { await session.send(.undo) } }
             case nil: EmptyView()
