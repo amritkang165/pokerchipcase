@@ -30,6 +30,7 @@ struct HostCardsTests {
         let seen = try await again.state { $0.phase == .betting }
         let full = await t.host.snapshot.game.state
         #expect(seen.seat(t.benWelcome.player)?.holeCards == full.seat(t.benWelcome.player)?.holeCards)
+        #expect(full.seat(t.benWelcome.player)?.holeCards.count == 2)
         #expect(seen.seat(t.hostID)?.holeCards == [] && seen.deck.isEmpty)
         await t.host.stop()
     }
