@@ -39,26 +39,19 @@ struct RoundTable: View {
                     .fill(RadialGradient(colors: theme.surface, center: .center, startRadius: 0, endRadius: size.width / 2))
                     .overlay(Circle().strokeBorder(theme.rim, lineWidth: 7))
                     .padding(seatWidth(in: size) / 2 - 8)
-                // The board sits above the center and pushes the pot below it.
-                let shift = state.config.digitalCards ? size.width * 0.08 : 0
-                let cardWidth = size.width * 0.085
-                let winners = handWinners
                 if state.config.digitalCards {
-                    board(cardWidth: cardWidth).position(x: size.width / 2, y: size.height / 2 - shift)
-                }
-                // After the payout: the winning hands above the board, the winners below it, where the empty pot was.
-                // Narrower than the gap between the side labels, so a long line shrinks or truncates instead of covering them.
-                if !winners.isEmpty {
-                    // Each hand once, e.g. "Flush · Two pair" when a side pot went to another hand.
-                    let hands = winners.map(\.1.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
-                    centerLine(hands.joined(separator: " · "))
-                        .frame(maxWidth: size.width * 0.5)
-                        .position(x: size.width / 2, y: size.height / 2 - shift - cardWidth * 0.7 - 10)
-                    centerLine(winners.map(\.0.name).joined(separator: ", "))
-                        .frame(maxWidth: size.width * 0.5)
-                        .position(x: size.width / 2, y: size.height / 2 + shift)
+                    // The board sits just above the center. The pot, or after the payout the winning hands and
+                    // the winners, hang below it as an overlay: they move with the board and can never cover it.
+                    board(cardWidth: size.width * 0.085)
+                        .overlay(alignment: .bottom) {
+                            // Narrower than the gap between the side labels, so a long line shrinks or truncates instead of covering them.
+                            Group { if handWinners.isEmpty { pot } else { winnerLines } }
+                                .frame(width: size.width * 0.5).fixedSize(horizontal: false, vertical: true)
+                                .alignmentGuide(.bottom) { $0[.top] - 8 }
+                        }
+                        .position(x: size.width / 2, y: size.height * 0.46)
                 } else {
-                    pot.position(x: size.width / 2, y: size.height / 2 + shift)
+                    pot.position(x: size.width / 2, y: size.height / 2)
                 }
                 ForEach(Array(seats.enumerated()), id: \.element.id) { i, seat in
                     let point = seatPoint(index: i, count: seats.count, in: size)
@@ -80,9 +73,10 @@ struct RoundTable: View {
         }
         .aspectRatio(1, contentMode: .fit)
         // From the screen height, not the space left over: that changes with the phase and
-        // the dealer hint, and the table would grow and shrink with it. The share leaves room for
-        // the tallest rest of the screen on an iPhone SE: header, stack and the raise slider.
-        .containerRelativeFrame(.vertical) { height, _ in height * 0.43 }
+        // the dealer hint, and the table would grow and shrink with it. 338 points are the tallest
+        // rest of the screen on an iPhone SE: header, stack and the raise slider. That is 57 % of its
+        // height; taller phones give everything above those points to the table, up to the screen width.
+        .containerRelativeFrame(.vertical) { height, _ in max(height * 0.43, height - 338) }
         // The layout constants assume at most this size; larger text would overlap the seats.
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
@@ -171,8 +165,16 @@ struct RoundTable: View {
         state.seats.filter(wonWithHand).compactMap { seat in state.handValue(of: seat).map { (seat, $0) } }
     }
 
-    private func centerLine(_ text: String) -> some View {
-        Text(text).font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
+    /// After the payout: the winning hands, then the winners, where the empty pot was.
+    private var winnerLines: some View {
+        let winners = handWinners
+        // Each hand once, e.g. "Flush · Two pair" when a side pot went to another hand.
+        let hands = winners.map(\.1.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        return VStack(spacing: 2) {
+            Text(hands.joined(separator: " · ")).font(.caption)
+            Text(winners.map(\.0.name).joined(separator: ", ")).font(.caption.bold())
+        }
+        .lineLimit(1).minimumScaleFactor(0.7)
     }
 
     private var pot: some View {
