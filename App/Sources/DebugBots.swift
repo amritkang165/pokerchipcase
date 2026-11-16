@@ -119,10 +119,16 @@ import SwiftUI
                 // A throwaway ticket file, so the real seat ticket stays untouched.
                 let endpoint: NWEndpoint = host.port.map { .hostPort(host: "127.0.0.1", port: $0) }
                     ?? .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil)
+                // ponytail: bots do not follow a `successor`, so handing over to a bot or away from the bots' host
+                // stalls the debug table. Upgrade: let bots follow `successor`.
+                // Their own save file, so a handover to a bot never touches the device's real host save.
+                let botSave = SaveFile<HostSnapshot>(
+                    url: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString).appending(path: "host.json"))
                 let bot = await TableSession.join(
                     endpoint: endpoint,
                     tableName: host.tableName, code: host.code, name: name,
-                    ticketFile: SaveFile(url: .temporaryDirectory.appending(path: "bot-\(name).json")))
+                    ticketFile: SaveFile(url: .temporaryDirectory.appending(path: "bot-\(name).json")),
+                    saveFile: botSave)
                 let play = Task {
                     while !Task.isCancelled {
                         if bot.legalActions != nil, !bot.isSending {
