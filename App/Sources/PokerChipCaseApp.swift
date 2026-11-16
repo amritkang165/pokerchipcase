@@ -10,6 +10,13 @@ struct PokerChipCaseApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("appearance") private var appearance = Appearance.system
 
+    init() {
+        Appearance.migrate(in: .standard)
+        #if DEBUG
+        Appearance.checkMigration()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {

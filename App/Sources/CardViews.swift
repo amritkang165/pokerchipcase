@@ -182,7 +182,7 @@ struct HoleCardsView: View {
 #Preview {
     let cards = [Card("Ah")!, Card("Ts")!]
     VStack(spacing: 0) {
-        ForEach([("Felt", Theme.felt), ("Dark", Theme.dark)], id: \.0) { _, theme in
+        ForEach([("Felt light", ThemeName.felt.palette(for: .light)), ("Neon dark", ThemeName.neon.palette(for: .dark))], id: \.0) { _, theme in
             VStack(spacing: 12) {
                 HStack {
                     CardFaceView(card: cards[0], width: 48)

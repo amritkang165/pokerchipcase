@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @AppStorage("theme") private var themeName = ThemeName.felt
     @AppStorage("appearance") private var appearance = Appearance.system
     @AppStorage("cardBack") private var cardBack = CardBack.red
     @Environment(\.theme) private var theme
@@ -9,10 +10,15 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Appearance", selection: $appearance) {
-                    ForEach(Appearance.allCases, id: \.self) { Text($0.label).tag($0) }
+                Section {
+                    Picker("Theme", selection: $themeName) {
+                        ForEach(ThemeName.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    Picker("Brightness", selection: $appearance) {
+                        ForEach(Appearance.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
                 .themedRow()
 
                 Section {

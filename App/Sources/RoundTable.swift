@@ -37,7 +37,7 @@ struct RoundTable: View {
             ZStack {
                 Circle()
                     .fill(RadialGradient(colors: theme.surface, center: .center, startRadius: 0, endRadius: size.width / 2))
-                    .overlay(Circle().strokeBorder(theme.rim, lineWidth: 7))
+                    .overlay(Circle().strokeBorder(theme.cushion, lineWidth: 7))
                     .padding(seatWidth(in: size) / 2 - 8)
                 if state.config.digitalCards {
                     // The board sits just above the center. The pot, or after the payout the winning hands and
@@ -215,7 +215,7 @@ struct RoundTable: View {
     }
 
     private func tag(_ text: String) -> some View {
-        Text(text).font(.system(size: 8, weight: .heavy)).foregroundStyle(theme.background)
+        Text(text).font(.system(size: 8, weight: .heavy)).foregroundStyle(theme.onAccent)
             .padding(.horizontal, 3).background(theme.accent, in: .rect(cornerRadius: 3))
     }
 

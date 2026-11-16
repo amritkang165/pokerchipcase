@@ -1,12 +1,26 @@
 import SwiftUI
 
-/// The per-device appearance setting, stored as `@AppStorage("appearance")`.
-enum Appearance: String, CaseIterable {
-    case felt, dark, system
+/// The per-device theme, stored as `@AppStorage("theme")`. Each theme has a light and a dark palette.
+enum ThemeName: String, CaseIterable {
+    case felt, neon, ruby, royal
 
     var label: String {
         switch self {
         case .felt: "Felt"
+        case .neon: "Neon"
+        case .ruby: "Rubin"
+        case .royal: "Royal"
+        }
+    }
+}
+
+/// The per-device brightness, stored as `@AppStorage("appearance")`. Independent of the theme.
+enum Appearance: String, CaseIterable {
+    case light, dark, system
+
+    var label: String {
+        switch self {
+        case .light: "Light"
         case .dark: "Dark"
         case .system: "System"
         }
@@ -14,12 +28,56 @@ enum Appearance: String, CaseIterable {
 
     var colorScheme: ColorScheme? {
         switch self {
-        case .felt: .light
+        case .light: .light
         case .dark: .dark
         case .system: nil
         }
     }
+
+    /// One-time move from the old "felt/dark/system" setting. Call before any `@AppStorage` read.
+    /// A stored `theme` is the marker that it ran, so a user's later choice is never overwritten.
+    static func migrate(in defaults: UserDefaults) {
+        guard defaults.object(forKey: "theme") == nil else { return }
+        switch defaults.string(forKey: "appearance") {
+        case "felt":
+            defaults.set(Appearance.light.rawValue, forKey: "appearance")
+            defaults.set(ThemeName.felt.rawValue, forKey: "theme")
+        case "dark":
+            // Today's dark theme lands on its successor.
+            defaults.set(ThemeName.neon.rawValue, forKey: "theme")
+        default:
+            defaults.set(ThemeName.felt.rawValue, forKey: "theme")
+        }
+    }
 }
+
+#if DEBUG
+extension Appearance {
+    /// Self-check for `migrate(in:)`, run at launch: the app target has no test target.
+    static func checkMigration() {
+        // Launch arguments show through every suite and would mask the scratch values.
+        let arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        guard arguments["theme"] == nil, arguments["appearance"] == nil else { return }
+        let suite = "io.github.mauwii.pokerchipcase.migration-check"
+        guard let defaults = UserDefaults(suiteName: suite) else { return }
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // stored appearance -> (appearance, theme) after migrate
+        let cases: [(String?, String?, String)] = [("felt", "light", "felt"), ("dark", "dark", "neon"), ("system", "system", "felt"), (nil, nil, "felt")]
+        for (old, appearance, theme) in cases {
+            defaults.removePersistentDomain(forName: suite)
+            defaults.set(old, forKey: "appearance")
+            migrate(in: defaults)
+            assert(defaults.string(forKey: "appearance") == appearance, "migrate: appearance from \(old ?? "nil")")
+            assert(defaults.string(forKey: "theme") == theme, "migrate: theme from \(old ?? "nil")")
+        }
+        // a stored theme is never overwritten
+        defaults.set("dark", forKey: "appearance")
+        defaults.set("royal", forKey: "theme")
+        migrate(in: defaults)
+        assert(defaults.string(forKey: "theme") == "royal", "migrate overwrote a stored theme")
+    }
+}
+#endif
 
 /// The per-device card back, stored as `@AppStorage("cardBack")`. Its color is the same in every theme.
 enum CardBack: String, CaseIterable {
@@ -38,22 +96,49 @@ enum CardBack: String, CaseIterable {
     }
 }
 
+/// The ring around the felt. It keeps its material in light and dark; it is what makes a theme recognizable.
+struct Rail: Sendable {
+    enum Fill: Sendable { case angular([Color], start: Angle), linear([Color]) }
+    var fill: Fill
+    /// Thin line on the rail's outer edge.
+    var edge: Color
+    /// Neon only.
+    var glow: Color?
+    /// Fine concentric wood grain, Felt only.
+    var grain: Bool
+}
+
 /// Look tokens. The layout is the same for every theme; only these values change.
 struct Theme: Sendable {
-    /// The room around the table.
+    /// Three stops of the room's radial gradient behind the table, inner to outer.
+    var room: [Color]
+    /// The middle room stop, for flat fills: navigation bar, banner.
     var background: Color
     /// Ground of the screens away from the table: lists, forms and sheets.
     var screen: Color
-    /// Inner and outer stop of the table's radial gradient.
+    /// Three stops of the felt's radial gradient, inner to outer.
     var surface: [Color]
-    var rim: Color
+    var rail: Rail
+    /// The band between felt and rail.
+    var cushion: Color
+    /// Width of the cushion as a fraction of the table diameter.
+    var cushionWidth: CGFloat
+    /// The betting line on the felt.
+    var line: Color
+    var seat: Color
+    var seatBorder: Color
+    var seatText: Color
+    /// Ink: text on the room.
+    var text: Color
+    /// Pot and bets on the felt.
+    var onTable: Color
+    var muted: Color
     var accent: Color
+    var onAccent: Color
     /// Tint for system-drawn UI in the window's scheme (alerts, dialogs), readable on its light or dark material.
     var formTint: Color
-    var seat: Color
-    var text: Color
-    var muted: Color
     var fold: Color
+    var onFold: Color
     /// Exactly three chip colors.
     var chips: [Color]
     /// Inner frame and lattice of a card back, edge of a card face.
@@ -64,31 +149,19 @@ struct Theme: Sendable {
     var cardText: Color
     /// Hearts and diamonds.
     var cardRed: Color
-
-    static let felt = Theme(
-        background: Color(hex: 0x3b2414), screen: Color(hex: 0x1d5e33), surface: [Color(hex: 0x2f8a4e), Color(hex: 0x1d5e33)], rim: Color(hex: 0x6b3f1d),
-        accent: Color(hex: 0xe8c15a), formTint: Color(hex: 0x9a6b00), seat: .black.opacity(0.45), text: Color(hex: 0xf3e9d2), muted: Color(hex: 0xc9b99a),
-        fold: Color(hex: 0x7a2a1f), chips: [Color(hex: 0xc0392b), Color(hex: 0x2c3e50), Color(hex: 0x27ae60)],
-        cardFrame: .white, cardFace: Color(hex: 0xf3e9d2), cardText: .black, cardRed: Color(hex: 0xc0392b))
-
-    static let dark = Theme(
-        background: Color(hex: 0x0d0f14), screen: Color(hex: 0x0d0f14), surface: [Color(hex: 0x171a22), Color(hex: 0x171a22)], rim: Color(hex: 0x232733),
-        accent: Color(hex: 0x38e1b0), formTint: Color(hex: 0x38e1b0), seat: Color(hex: 0x232733), text: Color(hex: 0xe8eaf0), muted: Color(hex: 0x8a90a2),
-        fold: Color(hex: 0x2a2e3a), chips: [Color(hex: 0x38e1b0), Color(hex: 0x5b6cff), Color(hex: 0xff9f68)],
-        cardFrame: Color(hex: 0x3a3f4d), cardFace: Color(hex: 0x232733), cardText: Color(hex: 0xe8eaf0), cardRed: Color(hex: 0xff6b6b))
 }
 
 extension EnvironmentValues {
-    @Entry var theme: Theme = .felt
+    @Entry var theme: Theme = ThemeName.felt.palette(for: .light)
 }
 
 extension View {
-    /// Sets the theme that matches the current color scheme, and its form tint.
+    /// Sets the chosen theme's palette for the current color scheme, and its form tint.
     func themed() -> some View { modifier(Themed()) }
 
     /// Theme background, tint and navigation bar for a screen; the last modifier inside its `NavigationStack`.
-    /// Both themes have dark grounds, so system controls take their dark style. The bar's background
-    /// visibility is left to the screen: the table hides it from outside.
+    /// System controls follow the stage's color scheme. The bar's background visibility is left to the
+    /// screen: the table hides it from outside.
     func themedScreen() -> some View { modifier(ThemedScreen()) }
 
     /// The theme's seat color as the row background of a list or form section.
@@ -106,8 +179,6 @@ private struct ThemedScreen: ViewModifier {
             // destructive role's red. Section headers set theme.muted themselves.
             .tint(theme.accent)
             .toolbarBackground(theme.screen, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .environment(\.colorScheme, .dark)
     }
 }
 
@@ -118,10 +189,11 @@ private struct ThemedRow: ViewModifier {
 }
 
 private struct Themed: ViewModifier {
+    @AppStorage("theme") private var themeName = ThemeName.felt
     @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
-        let theme: Theme = scheme == .dark ? .dark : .felt
+        let theme = themeName.palette(for: scheme)
         content.environment(\.theme, theme).tint(theme.formTint)
     }
 }
@@ -147,7 +219,7 @@ struct ThemeButtonStyle: ButtonStyle {
             configuration.label
                 .font(.body.bold()).lineLimit(1).minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
-                .foregroundStyle(role == .fold ? theme.text : theme.background)
+                .foregroundStyle(role == .fold ? theme.onFold : theme.onAccent)
                 .background(role == .fold ? theme.fold : theme.accent, in: .rect(cornerRadius: 10))
                 .opacity(opacity)
         }
@@ -158,7 +230,7 @@ struct ThemeButtonStyle: ButtonStyle {
     }
 }
 
-private extension Color {
+extension Color {
     init(hex: UInt32) {
         self.init(red: Double(hex >> 16 & 0xff) / 255, green: Double(hex >> 8 & 0xff) / 255, blue: Double(hex & 0xff) / 255)
     }
