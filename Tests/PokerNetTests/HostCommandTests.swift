@@ -50,19 +50,18 @@ struct HostCommandTests {
         await t.host.stop()
     }
 
-    @Test func removedPlayerIsDisconnectedAndForgotten() async throws {
+    @Test func removedPlayerIsDisconnectedAndRejoinsAsNew() async throws {
         let t = try await Table.open()
         t.anna.send(t.command(.removePlayer(player: t.benWelcome.player)))
         #expect(try await t.ben.error() == WireErrorCode.removed.rawValue)
         try await t.ben.waitForClose()
-        #expect(await t.host.snapshot.tokens[t.benWelcome.token] == nil)
         let again = try await RawClient.connect(t.port)
         again.send(hello("Ben", token: t.benWelcome.token))
         #expect(try await again.welcome().player != t.benWelcome.player)
         await t.host.stop()
     }
 
-    @Test func removedMidGameIsDisconnectedAndForgotten() async throws {
+    @Test func removedMidGameIsDisconnectedAndKeepsTheToken() async throws {
         let t = try await Table.open()
         let cem = try await RawClient.connect(t.port)
         cem.send(hello("Cem"))
@@ -73,8 +72,28 @@ struct HostCommandTests {
         t.anna.send(t.command(.removePlayer(player: t.benWelcome.player), version: running.version))
         #expect(try await t.ben.error() == WireErrorCode.removed.rawValue)
         try await t.ben.waitForClose()
-        #expect(await t.host.snapshot.tokens[t.benWelcome.token] == nil)
+        #expect(await t.host.snapshot.tokens[t.benWelcome.token] == t.benWelcome.player)
         #expect(await t.host.snapshot.game.state.seat(t.benWelcome.player) != nil)  // seat kept mid-game
+        await t.host.stop()
+    }
+
+    @Test func undoneRemovalLetsThePlayerReconnect() async throws {
+        let t = try await Table.open()
+        let cem = try await RawClient.connect(t.port)
+        cem.send(hello("Cem"))
+        _ = try await cem.welcome()
+        let state = try await t.anna.state { $0.seats.count == 3 }
+        t.anna.send(t.command(.startTournament(button: t.hostID), version: state.version))
+        let running = try await t.anna.state { $0.phase == .betting }
+        t.anna.send(t.command(.removePlayer(player: t.benWelcome.player), version: running.version))
+        try await t.ben.waitForClose()
+        let removed = try await t.anna.state { $0.version > running.version }
+        t.anna.send(t.command(.undo, version: removed.version))
+        _ = try await t.anna.state { $0.version > removed.version }
+        let again = try await RawClient.connect(t.port)
+        again.send(hello("Ben", token: t.benWelcome.token))
+        #expect(try await again.welcome().player == t.benWelcome.player)
+        #expect(try await again.state().seat(t.benWelcome.player)?.stack ?? 0 > 0)
         await t.host.stop()
     }
 

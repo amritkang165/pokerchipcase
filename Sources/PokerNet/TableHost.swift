@@ -248,8 +248,8 @@ public actor TableHost {
             Task { await finishHandover(to: target) }
             return
         }
-        if case let .removePlayer(removed) = request.command { forget(removed) }
-        forgetRemovedPlayers()
+        if case let .removePlayer(removed) = request.command { kick(removed) }
+        kickUnseatedPlayers()
         onChange(snapshot)
         // State before ack: when a client's send returns, it already knows the new state version.
         broadcastState()
@@ -268,16 +268,16 @@ public actor TableHost {
         disconnectAll()
     }
 
-    /// A player removed mid-game keeps the seat (folded, out) but loses the token and connection.
-    private func forget(_ player: PlayerID) {
-        snapshot.tokens = snapshot.tokens.filter { $0.value != player }
+    /// A player removed mid-game keeps the seat (folded, out) and the token, so an undo can give the seat back;
+    /// the connection closes.
+    private func kick(_ player: PlayerID) {
         for (id, p) in bound where p == player { reject(.removed, id, replyTo: nil) }
     }
 
-    /// Players without a seat (removed in the lobby, or their join was undone) lose their token and connection.
-    private func forgetRemovedPlayers() {
+    /// Players without a seat (removed in the lobby, or their join was undone) lose their connection.
+    /// Their token stays, but `welcome` only honors tokens of seated players.
+    private func kickUnseatedPlayers() {
         let seated = Set(snapshot.game.state.seats.map(\.id))
-        snapshot.tokens = snapshot.tokens.filter { seated.contains($0.value) }
         for (id, player) in bound where !seated.contains(player) {
             reject(.removed, id, replyTo: nil)
         }
@@ -289,7 +289,7 @@ public actor TableHost {
         }
         let player: PlayerID
         let token: String
-        if let t = hello.token, let p = snapshot.tokens[t] {
+        if let t = hello.token, let p = snapshot.tokens[t], snapshot.game.state.seat(p) != nil {
             player = p
             token = t
             // The newest connection for a player wins. Usually the old one is dead; if it is another

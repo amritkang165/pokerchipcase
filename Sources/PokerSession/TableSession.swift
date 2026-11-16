@@ -197,8 +197,8 @@ public enum ConnectionStatus: Equatable, Sendable {
     }
 
     /// Disconnects; a guest in the lobby gives up their seat first, the host also ends the table for everyone.
-    /// Deletes this device's save file and returns false if that failed (`problem` says why; calling `leave()`
-    /// again retries).
+    /// Deletes this device's save file and seat ticket (the ticket stays after `removed`, for an undo by the host)
+    /// and returns false if that failed (`problem` says why; calling `leave()` again retries).
     @discardableResult public func leave() async -> Bool {
         eventTask?.cancel()
         eventTask = nil  // a queued stepDown must not create a successor after the user left
@@ -216,7 +216,11 @@ public enum ConnectionStatus: Equatable, Sendable {
         }
         await client.disconnect()
         await tableHost?.end()
-        return record(.delete) { try saveFile?.delete(); try ticketFile?.delete() }
+        let keepTicket = connection == .failed(.removed)
+        return record(.delete) {
+            try saveFile?.delete()
+            if !keepTicket { try ticketFile?.delete() }
+        }
     }
 
     /// Sets `problem` for a failed `action`, or clears it when that action worked.
@@ -279,7 +283,8 @@ public enum ConnectionStatus: Equatable, Sendable {
         case let .failed(failure):
             connection = .failed(failure)
             // Only our own ticket: one we rejoined with or saved on welcome, never another table's.
-            if fromTicket || me != nil { record(.delete) { try ticketFile?.delete() } }
+            // After `removed` the ticket stays: an undo by the host gives the seat back to it.
+            if fromTicket || me != nil, failure != .removed { record(.delete) { try ticketFile?.delete() } }
         }
     }
 
