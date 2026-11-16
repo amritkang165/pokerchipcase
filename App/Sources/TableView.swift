@@ -22,12 +22,14 @@ struct TableView: View {
         state.config.levels.indices.contains(state.clock.levelIndex + 1) ? state.config.levels[state.clock.levelIndex + 1] : nil
     }
 
-    private var showsBanner: Bool { session.me == state.dealerID && state.dealerHint != nil }
+    /// The dealer's hint, shown only to the dealer.
+    private var bannerHint: DealerHint? { session.me == state.dealerID ? state.dealerHint : nil }
+    private var showsBanner: Bool { bannerHint != nil }
 
     var body: some View {
         VStack(spacing: 10) {
             header
-            if showsBanner, let hint = state.dealerHint {
+            if let hint = bannerHint {
                 // One compact line: the rest of the screen is tallest with this banner on an iPhone SE.
                 Text(hint.message).font(.subheadline.bold()).frame(maxWidth: .infinity).padding(4)
                     .background(theme.accent.opacity(0.25), in: .rect(cornerRadius: 8))
@@ -43,13 +45,13 @@ struct TableView: View {
                 VStack(spacing: 0) {
                     // With the dealer banner the label shares a line with the number: the rest of the screen
                     // is tallest then and must still fit on an iPhone SE.
-                    let label = Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
-                    let stack = Text("\(myStack)").font(.system(size: showsBanner ? 28 : 40, weight: .bold, design: .rounded)).monospacedDigit()
-                    if showsBanner {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) { label; stack }
-                    } else {
-                        label
-                        stack.contentTransition(.numericText()).animation(.default, value: myStack)
+                    // One layout that switches, so the number keeps its identity and its transition.
+                    let layout = showsBanner
+                        ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8)) : AnyLayout(VStackLayout(spacing: 0))
+                    layout {
+                        Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
+                        Text("\(myStack)").font(.system(size: showsBanner ? 28 : 40, weight: .bold, design: .rounded)).monospacedDigit()
+                            .contentTransition(.numericText()).animation(.default, value: myStack)
                     }
                     if let legal = session.legalActions, legal.callAmount > 0 {
                         Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
