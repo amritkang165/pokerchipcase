@@ -65,6 +65,8 @@ public actor TableHost {
 
     private func bind(port: NWEndpoint.Port) async throws -> NWEndpoint.Port {
         await cancelListener()
+        // A start suspended before the handover must not open a listener with the same Bonjour name.
+        guard !handedOver else { throw NWError.posix(.ECANCELED) }
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
         listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
         listenerID += 1
