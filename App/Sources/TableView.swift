@@ -12,7 +12,8 @@ struct TableView: View {
 
     private var picking: Bool { state.phase == .showdown && session.canRunHand && state.pots.indices.contains(pot) }
 
-    private var myStack: Chips { session.me.flatMap { state.seat($0)?.stack } ?? 0 }
+    private var mySeat: Seat? { session.me.flatMap { state.seat($0) } }
+    private var myStack: Chips { mySeat?.stack ?? 0 }
     /// The hand is over and I won chips in it.
     private var iWon: Bool {
         state.phase == .handComplete && (session.me.flatMap { state.seat($0) }.map { $0.stack > $0.stackAtHandStart } ?? false)
@@ -31,12 +32,18 @@ struct TableView: View {
             }
             // One view for every phase, so it keeps its identity and animates into the showdown.
             RoundTable(state: state, viewer: session.me, seatState: seatState, onTapSeat: onTapSeat)
-            VStack(spacing: 0) {
-                Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
-                Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
-                    .contentTransition(.numericText()).animation(.default, value: myStack)
-                if let legal = session.legalActions, legal.callAmount > 0 {
-                    Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
+            HStack(spacing: 16) {
+                // No taller than the stack block, so the table keeps its size.
+                if let mySeat, mySeat.holeCards.count == 2 {
+                    HoleCardsView(cards: mySeat.holeCards, faceUp: state.isRevealed(mySeat), width: 50)
+                }
+                VStack(spacing: 0) {
+                    Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
+                    Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
+                        .contentTransition(.numericText()).animation(.default, value: myStack)
+                    if let legal = session.legalActions, legal.callAmount > 0 {
+                        Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
+                    }
                 }
             }
             // The table keeps its size, so the slack goes here and the bar stays at the bottom.
