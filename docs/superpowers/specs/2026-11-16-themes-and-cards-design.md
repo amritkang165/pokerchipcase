@@ -263,7 +263,7 @@ Plain form rows with a live preview of two cards and a back:
 Chosen by the owner for a later stage, not part of PR 1 or PR 2:
 
 - **Blind clock on large iPhones.** Where the screen leaves room below "To call" (an iPhone 17 Pro Max has about 90 points), show a bar with the time gone in the current level, the time left, and the next two levels. Phones without the room show the header as today. Mockup `big-phone-space-v3.html`, option C, local.
-- **The area is configurable** (owner's request). A per-device setting picks what fills it: blind clock (default), best hand, or nothing. Best hand shows the viewer's best hand from hole cards and board with the five cards that make it (mockup option B); in a game without digital cards it falls back to the blind clock (author's proposal, not yet confirmed). Phones without the room do not show the setting.
+- **The area is configurable** (owner's request). A per-device setting picks what fills it: blind clock (default), best hand, or nothing. Best hand shows the viewer's best hand from hole cards and board with the five cards that make it (mockup option B); in a game without digital cards it falls back to the blind clock (confirmed by the owner). Phones without the room do not show the setting.
 
 ## Decisions made while writing
 
