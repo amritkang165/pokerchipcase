@@ -78,8 +78,8 @@ private let rags = "3s 8d Jc 4h 9s"
 }
 
 @Test func newHandPaidOutAtOnceKeepsTheShowdownStep() throws {     // Review Focus 1
-    var g = try Game.started(["A": 10, "B": 1000], digital: true)
-    #expect(g.history.count == 2 && g.history.last?.phase == .showdown)
+    let g = try Game.started(["A": 10, "B": 1000], digital: true)
+    #expect(g.history.count == 3 && g.history.last?.phase == .showdown)
 }
 
 @Test func allInFromTheBlindsIsPaidInsideTheStartCommand() throws {     // Review Focus 1

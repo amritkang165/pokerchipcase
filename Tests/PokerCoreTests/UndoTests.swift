@@ -59,23 +59,28 @@ private extension GameState {
     #expect(g.state.seat("A")?.folded == false && g.state.clock.isPaused)
 }
 
-@Test func startTournamentKeepsOnlyTheLastLobbyState() throws {
+@Test func startTournamentKeepsOnlyTheLastLobbySteps() throws {
     var g = Game(hostID: "A", hostName: "A", config: .relaxed)
     try g.apply(.join(player: "B", name: "B"), by: "A", at: t0)
     try g.apply(.join(player: "C", name: "C"), by: "A", at: t0)
+    let beforeLastJoin = g.history.last
     let lobby = g.state
     try g.apply(.startTournament(button: "A"), by: "A", at: t0)
-    #expect(g.history == [lobby])
+    #expect(g.history == [beforeLastJoin, lobby])
 }
 
-@Test func undoReachesOnlyBackToTheEndOfThePreviousHand() throws {
+/// The previous hand's last step stays, so undoing the deal can still take back its payout ("Change winner").
+@Test func undoReachesBackToThePreviousHandsPayoutOnly() throws {
     var g = try Game.started()
     try g.act(.call); try g.act(.call); try g.checkDown()
+    let atShowdown = g.state
     try g.apply(.resolveShowdown(winners: [["B"]]), by: "A", at: t0)
     let complete = g.state
     try g.apply(.startNextHand, by: "A", at: t0)
-    #expect(g.history.count == 1)
+    #expect(g.history.count == 2)
     try g.apply(.undo, by: "A", at: t0)
     #expect(g.state.ignoringVersion == complete.ignoringVersion)
+    try g.apply(.undo, by: "A", at: t0)
+    #expect(g.state.ignoringVersion == atShowdown.ignoringVersion)
     #expect(throws: Rejection.nothingToUndo) { try g.apply(.undo, by: "A", at: t0) }
 }
