@@ -6,6 +6,8 @@ import PokerCore
 ///
 /// iOS tears down listening sockets while an app is suspended. Call `ensureListening()` whenever the
 /// app becomes active again; it restarts the listener on the same port if it has stopped.
+///
+/// An accepted `transferHost` hands the table over: the target gets a `handover` and the host stops serving.
 public actor TableHost {
     /// The current game, tokens and table identity; changes with every accepted command and every new player's hello.
     public private(set) var snapshot: HostSnapshot
@@ -23,13 +25,24 @@ public actor TableHost {
     private var channels: [UUID: MessageChannel] = [:]
     private var bound: [UUID: PlayerID] = [:]
     private let helloTimeout: Duration
+    private let liveWindow: Duration
+    /// When each connection last sent a message.
+    private var lastHeard: [UUID: ContinuousClock.Instant] = [:]
+
+    /// True once this host accepted a `transferHost`: it has stopped serving and another device hosts the table.
+    public private(set) var handedOver = false
+
+    /// Undo steps a handover carries; the whole history of a long tournament exceeds `MessageChannel.maxMessageSize`.
+    static let handoverHistory = 50
 
     /// `onChange` receives every new snapshot; persist it to resume after a crash.
     /// `helloTimeout`: a connection that has not finished TLS and `hello` by then is closed.
-    public init(snapshot: HostSnapshot, helloTimeout: Duration = .seconds(10),
+    /// `liveWindow`: a handover target must have sent a message within this time.
+    public init(snapshot: HostSnapshot, helloTimeout: Duration = .seconds(10), liveWindow: Duration = .seconds(12),
                 onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }) {
         self.snapshot = snapshot
         self.helloTimeout = helloTimeout
+        self.liveWindow = liveWindow
         self.onChange = onChange
     }
 
@@ -108,6 +121,7 @@ public actor TableHost {
         for channel in channels.values { channel.cancel() }
         channels = [:]
         bound = [:]
+        lastHeard = [:]
     }
 
     /// `callbackLost`: the listener stops, but `listenerStopped` ignores it, like a callback that lands late.
@@ -168,10 +182,12 @@ public actor TableHost {
     private func drop(_ id: UUID) {
         channels[id] = nil
         bound[id] = nil
+        lastHeard[id] = nil
     }
 
     private func receive(_ data: Data, from id: UUID) {
-        guard channels[id] != nil else { return }
+        guard !handedOver, channels[id] != nil else { return }
+        lastHeard[id] = .now
         // Errors reuse the request's envelope id so the sender can match them to its command.
         let messageID: UUID
         let message: ClientMessage
@@ -196,10 +212,28 @@ public actor TableHost {
         guard let player = bound[id] else {
             return send(.error(WireErrorCode.helloRequired.rawValue), to: id, envelopeID: messageID)
         }
+        var target: UUID?
+        if case let .transferHost(to: heir) = request.command {
+            // A suspended app keeps its connection but sends nothing, so a bound connection is not enough.
+            let now = ContinuousClock.now
+            target = bound.first { $0.value == heir && lastHeard[$0.key].map { now - $0 < liveWindow } == true }?.key
+            if target == nil {
+                return send(.ack(Ack(id: messageID, result: .rejected(reason: .playerOffline))), to: id)
+            }
+        }
         do {
             try snapshot.game.apply(request.command, by: player, at: Date(), expectedVersion: request.stateVersion)
         } catch {
             return send(.ack(Ack(id: messageID, result: .rejected(reason: error))), to: id)
+        }
+        if let target {
+            // No onChange: the save keeps this device as host, so it can resume if the target fails.
+            broadcastState()
+            send(.ack(Ack(id: messageID, result: .ok)), to: id)
+            handedOver = true
+            port = nil
+            Task { await finishHandover(to: target) }
+            return
         }
         if case let .removePlayer(removed) = request.command { forget(removed) }
         forgetRemovedPlayers()
@@ -207,6 +241,18 @@ public actor TableHost {
         // State before ack: when a client's send returns, it already knows the new state version.
         broadcastState()
         send(.ack(Ack(id: messageID, result: .ok)), to: id)
+    }
+
+    /// Frees the Bonjour name first so the target can register it, then sends the handover and closes everything.
+    private func finishHandover(to id: UUID) async {
+        await cancelListener()
+        var game = snapshot.game
+        game.keepHistory(last: Self.handoverHistory)
+        if let data = try? Wire.encode(ServerMessage.handover(Handover(game: game, tokens: snapshot.tokens)), id: UUID()) {
+            channels[id]?.sendAndClose(data)
+        }
+        drop(id)
+        disconnectAll()
     }
 
     /// A player removed mid-game keeps the seat (folded, out) but loses the token and connection.

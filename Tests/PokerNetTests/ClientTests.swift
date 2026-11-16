@@ -7,6 +7,7 @@ import Testing
 extension ClientEvent {
     var welcome: Welcome? { if case let .welcome(w) = self { w } else { nil } }
     var state: GameState? { if case let .state(s) = self { s } else { nil } }
+    var handover: Handover? { if case let .handover(h) = self { h } else { nil } }
 }
 
 private func client(

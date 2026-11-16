@@ -149,9 +149,10 @@ func startHost(
     _ snapshot: HostSnapshot = testSnapshot(),
     port: NWEndpoint.Port = .any,
     helloTimeout: Duration = .seconds(10),
+    liveWindow: Duration = .seconds(12),
     onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }
 ) async throws -> (TableHost, NWEndpoint.Port) {
-    let host = TableHost(snapshot: snapshot, helloTimeout: helloTimeout, onChange: onChange)
+    let host = TableHost(snapshot: snapshot, helloTimeout: helloTimeout, liveWindow: liveWindow, onChange: onChange)
     return (host, try await host.start(port: port))
 }
 
@@ -190,9 +191,10 @@ struct Table {
 
     static func open(
         snapshot: HostSnapshot = testSnapshot(),
+        liveWindow: Duration = .seconds(12),
         onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }
     ) async throws -> Table {
-        let (host, port) = try await startHost(snapshot, onChange: onChange)
+        let (host, port) = try await startHost(snapshot, liveWindow: liveWindow, onChange: onChange)
         let anna = try await RawClient.connect(port)
         anna.send(hello("Anna", token: await host.snapshot.hostToken))
         let hostID = try await anna.welcome().player

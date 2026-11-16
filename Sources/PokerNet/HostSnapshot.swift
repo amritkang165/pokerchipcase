@@ -13,6 +13,14 @@ public struct HostSnapshot: Codable, Equatable, Sendable {
     /// Code clients need to connect.
     public var code: TableCode
 
+    /// Creates a snapshot from its parts, for a device that takes a table over.
+    public init(game: Game, tokens: [String: PlayerID], tableName: String, code: TableCode) {
+        self.game = game
+        self.tokens = tokens
+        self.tableName = tableName
+        self.code = code
+    }
+
     /// Starts a new lobby with a fresh host ID and token; the host is the only player seated.
     public static func newTable(
         hostName: String, tableName: String, code: TableCode = .random(), config: TournamentConfig
