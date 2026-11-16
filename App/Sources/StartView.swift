@@ -137,7 +137,13 @@ struct StartView: View {
 
     private func host(_ snapshot: HostSnapshot) {
         connect {
-            do { return try await TableSession.host(snapshot) } catch { failed = true; return nil }
+            do {
+                let session = try await TableSession.host(snapshot)
+                #if DEBUG
+                DebugBots.resume(session, from: snapshot)
+                #endif
+                return session
+            } catch { failed = true; return nil }
         }
     }
 
