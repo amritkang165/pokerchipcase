@@ -44,7 +44,7 @@ extension Card {
     }
 }
 
-private extension [Card] {
+extension [Card] {
     var spokenNames: String { map(\.spokenName).joined(separator: ", ") }
 }
 

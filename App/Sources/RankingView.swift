@@ -13,7 +13,18 @@ struct RankingView: View {
     var body: some View {
         VStack(spacing: 12) {
             Text("Final ranking").font(.title.bold())
-            ScrollView { ranking }
+            ScrollView {
+                VStack(spacing: 12) {
+                    ranking
+                    if !revealed.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(state.board, id: \.self) { CardFaceView(card: $0, width: 44) }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Board: " + state.board.spokenNames)
+                    }
+                }
+            }
             Button("Leave table", action: onLeave)
                 .buttonStyle(ThemeButtonStyle())
                 .padding(.bottom)
@@ -24,7 +35,7 @@ struct RankingView: View {
     /// One row per player in ranking order; with digital cards also the cards and hand each player showed in the last hand.
     private var ranking: some View {
         let cards = !revealed.isEmpty
-        return Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
+        return Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
             GridRow {
                 Text("Name")
                 if cards {
