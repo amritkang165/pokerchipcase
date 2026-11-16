@@ -61,6 +61,22 @@ struct HostLobbyTests {
         await host.stop()
     }
 
+    @Test func seatNameIsTrimmedCutAndNeverEmpty() {
+        #expect(TableHost.seatName("  Ben \n") == "Ben")
+        #expect(TableHost.seatName(String(repeating: "x", count: 1000)) == String(repeating: "x", count: 32))
+        #expect(TableHost.seatName(String(repeating: "👨‍👩‍👧", count: 40)).count == 32)
+        #expect(TableHost.seatName(" \n ") == "Player")
+    }
+
+    @Test func longNameIsCutOnJoin() async throws {
+        let (host, port) = try await startHost()
+        let ben = try await RawClient.connect(port)
+        ben.send(hello(String(repeating: "B", count: 100_000)))
+        let w = try await ben.welcome()
+        #expect(try await ben.state().seat(w.player)?.name.count == TableHost.maxNameLength)
+        await host.stop()
+    }
+
     @Test func unknownTokenJoinsAsNewPlayer() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)

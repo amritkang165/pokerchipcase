@@ -51,7 +51,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":3}
 ```
 
-Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. So does the token of a player who no longer has a seat. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
+Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. The host trims `payload.name`, cuts it to 32 characters and uses `Player` if nothing is left. An unknown token counts as a new join. So does the token of a player who no longer has a seat. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
 
 ### `command` – every game command
 

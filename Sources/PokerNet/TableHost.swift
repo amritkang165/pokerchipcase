@@ -39,6 +39,16 @@ public actor TableHost {
     /// Undo steps a handover carries; the whole history of a long tournament exceeds `MessageChannel.maxMessageSize`.
     static let handoverHistory = 50
 
+    /// Longest seat name a guest gets; names longer than this would bloat every state message,
+    /// and the app's field never needs more.
+    static let maxNameLength = 32
+
+    /// The name a guest is seated with: trimmed, at most ``maxNameLength`` characters, "Player" if nothing is left.
+    static func seatName(_ raw: String) -> String {
+        let name = String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxNameLength))
+        return name.isEmpty ? "Player" : name
+    }
+
     /// `onChange` receives every new snapshot; persist it to resume after a crash.
     /// `helloTimeout`: a connection that has not finished TLS and `hello` by then is closed.
     /// `liveWindow`: a handover target must have sent a message within this time.
@@ -298,7 +308,7 @@ public actor TableHost {
         } else {
             player = UUID().uuidString
             do {
-                try snapshot.game.apply(.join(player: player, name: hello.name), by: snapshot.game.state.hostID, at: Date())
+                try snapshot.game.apply(.join(player: player, name: Self.seatName(hello.name)), by: snapshot.game.state.hostID, at: Date())
             } catch .tableFull {
                 return reject(.tableFull, id, replyTo: requestID)
             } catch {
