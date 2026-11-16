@@ -4,34 +4,6 @@ import PokerCore
 import Testing
 @testable import PokerNet
 
-/// A host with Anna (host client) and Ben connected, both past `welcome` and the 2-seat `state`.
-private struct Table {
-    let host: TableHost
-    let port: NWEndpoint.Port
-    let anna: RawClient
-    let ben: RawClient
-    let hostID: PlayerID
-    let benWelcome: Welcome
-    let version: Int
-
-    static func open(onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }) async throws -> Table {
-        let (host, port) = try await startHost(onChange: onChange)
-        let anna = try await RawClient.connect(port)
-        anna.send(hello("Anna", token: await host.snapshot.hostToken))
-        let hostID = try await anna.welcome().player
-        let ben = try await RawClient.connect(port)
-        ben.send(hello("Ben"))
-        let benWelcome = try await ben.welcome()
-        let state = try await anna.state { $0.seats.count == 2 }
-        _ = try await ben.state { $0.seats.count == 2 }
-        return Table(host: host, port: port, anna: anna, ben: ben, hostID: hostID, benWelcome: benWelcome, version: state.version)
-    }
-
-    func command(_ command: Command, version: Int? = nil) -> ClientMessage {
-        .command(CommandRequest(command: command, stateVersion: version ?? self.version))
-    }
-}
-
 @Suite(.timeLimit(.minutes(1)))
 struct HostCommandTests {
     @Test func commandAckedAndBroadcast() async throws {
@@ -110,7 +82,7 @@ struct HostCommandTests {
     @Test func errorReplyCarriesRequestID() async throws {
         let t = try await Table.open()
         let id = UUID()
-        let raw = #"{"id":"\#(id.uuidString)","payload":{"command":{"bogus":{}},"stateVersion":0},"type":"command","v":1}"#
+        let raw = #"{"id":"\#(id.uuidString)","payload":{"command":{"bogus":{}},"stateVersion":0},"type":"command","v":2}"#
         t.ben.sendRaw(Data(raw.utf8))
         let reply = try await t.ben.nextEnvelope { $0.error != nil }
         #expect(reply.message.error == WireErrorCode.malformed.rawValue && reply.id == id)

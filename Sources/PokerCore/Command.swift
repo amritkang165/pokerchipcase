@@ -33,6 +33,7 @@ public enum Command: Codable, Equatable, Sendable {
     /// Restarts a paused blind clock; host only.
     case resumeClock
     /// Reverts the last command other than a clock pause or resume; host only. The clock itself is not rolled back.
+    /// In a digital game the first undo after a showdown returns to the showdown before the automatic payout.
     case undo
 }
 

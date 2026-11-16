@@ -3,10 +3,11 @@
 An iOS app that replaces the poker chip case at a Texas Hold'em night among friends – everything except the deck of cards. Players use real cards, every player uses the app on their own iPhone, and betting happens in the app. Play money only, no real money.
 
 <p>
-  <img src="docs/images/lobby.png" width="24%" alt="Lobby with the table code the other players join with">
-  <img src="docs/images/table.png" width="24%" alt="Oval table in the felt theme during a betting round">
-  <img src="docs/images/showdown.png" width="24%" alt="Showdown: tap the winner, then pay out">
-  <img src="docs/images/dark.png" width="24%" alt="The table in the dark theme">
+  <img src="docs/images/lobby.png" width="19%" alt="Lobby with the table code the other players join with">
+  <img src="docs/images/table.png" width="19%" alt="Round table in the felt theme during a betting round">
+  <img src="docs/images/showdown.png" width="19%" alt="Showdown: tap the winners on the table, then pay out">
+  <img src="docs/images/payout.png" width="19%" alt="End of a hand with every player's win or loss">
+  <img src="docs/images/dark.png" width="19%" alt="The table in the dark theme">
 </p>
 
 ## How a game night works

@@ -8,7 +8,23 @@ import SwiftUI
 /// Debug builds only: fills the host's lobby with in-process guests that check, call or raise on their turn,
 /// so a full table can be played on one simulator.
 @MainActor enum DebugBots {
-    private static let names = ["foo", "bar", "baz", "qux", "quux", "corge", "grault", "Maximilian-Alexander", "garply"]
+    /// Shuffled per fill, so every screenshot shows different, realistic names. The long one tests truncation.
+    private static let names = [
+        "Ace High", "Bluff Daddy", "Chip Chopper", "River Rat", "Lucky Lou", "Pocket Rocket", "Big Slick",
+        "Nuts McGee", "Tilt Master", "All-In Annie", "Card Shark", "Fishy Fred", "The Professor", "Donk",
+        "Royal Flush", "Snake Eyes", "Slow Roll", "Check Raise", "Full House Fritz", "Queen Bee", "Jackpot Jo",
+        "King Kev", "Deuce Dora", "Trips Tina", "Gutshot Gus", "Kicker", "Muck Duck", "Short Stack",
+        "Big Blind Bob", "Small Blind Sue", "Dealer Dan", "Button Betty", "Nit Wit", "Calling Station", "Whale",
+        "Maverick", "Iceman", "Sundance", "Cool Hand", "The Grinder", "Mister Chips", "Lady Luck", "Wild Card",
+        "Joker", "Poker Face", "Stone Cold", "Monte", "Vegas Vic", "Reno Rita", "Atlantic Al", "Felt Burner",
+        "Chip Leader", "Rainbow", "Flopzilla", "Turn Burn", "Nine High", "Seven Deuce", "Hammer", "Cowboy", "Ladies",
+        "Hooks", "Snowmen", "Ducks", "Fishhooks", "Pocket Kings", "Suited Connector", "Backdoor Barry", "Overbet Olga",
+        "Min-Raise Max", "Limp Larry", "Straddle Steve", "Ante Up", "Bubble Boy", "Satellite Sam", "Final Table",
+        "Heads Up", "Dead Money", "Busto", "Rebuy Rick", "Freeroll Franzi", "Bad Beat Bernd", "Cooler Carl",
+        "Suckout Susi", "Rungood Rudi", "Variance Vera", "Equity Eddie", "Range Ronja", "Bluffmaster Flex", "Tellmann",
+        "Sunglasses Sam", "Hoodie Hank", "Moneybags", "Cashout Chris", "Dolly Draw", "Stack Stu", "Fold Phil",
+        "Fold Pre", "Snap Call", "Tank Tom", "Maximilian-Alexander",
+    ]
     // ponytail: bots are never torn down; they idle after the table ends. Add cleanup if they get in the way.
     private static var bots: [(TableSession, Task<Void, Never>)] = []
 
@@ -16,10 +32,23 @@ import SwiftUI
     /// Combine with `-playerName Du` and `-appearance felt|dark`.
     static let auto = ProcessInfo.processInfo.arguments.contains("-debugTable")
 
+    /// Launch argument `-debugStop lobby|turn|showdown|payout`, with `-debugTable`: where the host stops
+    /// playing by itself, for screenshots. Without it the host starts the game and plays by hand.
+    private static let stop = UserDefaults.standard.string(forKey: "debugStop")
+
     static func autoStart(_ host: TableSession) async {
         fill(host, count: maxSeats)
         for _ in 0..<60 where (host.state?.seats.count ?? 0) < maxSeats { try? await Task.sleep(for: .milliseconds(500)) }
-        if let me = host.me { await host.send(.startTournament(button: me)) }
+        guard stop != "lobby", let me = host.me else { return }
+        await host.send(.startTournament(button: me))
+        guard stop == "showdown" || stop == "payout" else { return }
+        // The host calls like a bot until the first showdown, then pays the first eligible player per pot.
+        while let state = host.state, state.phase != .showdown {
+            if let legal = host.legalActions, !host.isSending { await host.act(action(legal, style: .call)) }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        guard stop == "payout", let pots = host.state?.pots else { return }
+        await host.send(.resolveShowdown(winners: pots.map { [$0.eligible.contains(me) ? me : $0.eligible[0]] }))
     }
 
     /// What a bot does on its turn.
@@ -39,7 +68,7 @@ import SwiftUI
         var snapshot = HostSnapshot.newTable(hostName: hostName, tableName: tableName, config: .relaxed)
         let host = snapshot.game.state.hostID
         let now = Date()  // One date, so the blinds never rise.
-        for name in names { try snapshot.game.apply(.join(player: UUID().uuidString, name: name), by: host, at: now) }
+        for name in names.shuffled().prefix(maxSeats - 1) { try snapshot.game.apply(.join(player: UUID().uuidString, name: name), by: host, at: now) }
         try snapshot.game.apply(.startTournament(button: host), by: host, at: now)
         while snapshot.game.state.handNumber <= hands, snapshot.game.state.phase != .finished {
             let state = snapshot.game.state
@@ -75,11 +104,15 @@ import SwiftUI
     static func fill(_ host: TableSession, count: Int, speed: BotSpeed = .fast, style: BotStyle = .call) {
         let seated = host.state?.seats.map(\.name) ?? []
         let free = max(0, maxSeats - seated.count)
-        for name in names.filter({ !seated.contains($0) }).prefix(min(count, free)) {
+        for name in names.shuffled().filter({ !seated.contains($0) }).prefix(min(count, free)) {
             Task {
-                // Bonjour, like a real guest; a throwaway ticket file so the real seat ticket stays untouched.
+                // Loopback, like the host itself: on a device, resolving our own Bonjour service took
+                // so long that the bots joined minutes late, all at once. Real guests still test Bonjour.
+                // A throwaway ticket file, so the real seat ticket stays untouched.
+                let endpoint: NWEndpoint = host.port.map { .hostPort(host: "127.0.0.1", port: $0) }
+                    ?? .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil)
                 let bot = await TableSession.join(
-                    endpoint: .service(name: host.tableName, type: Wire.serviceType, domain: "local.", interface: nil),
+                    endpoint: endpoint,
                     tableName: host.tableName, code: host.code, name: name,
                     ticketFile: SaveFile(url: .temporaryDirectory.appending(path: "bot-\(name).json")))
                 let play = Task {

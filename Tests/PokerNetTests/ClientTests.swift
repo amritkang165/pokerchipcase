@@ -237,10 +237,10 @@ struct ClientTests {
         await fake.dropAll()
     }
 
-    @Test func newerHostVersionFailsWithoutRetry() async throws {
+    @Test func olderHostVersionFailsWithoutRetry() async throws {
         let fake = try FakeHost { _, message in
             guard case .hello = message else { return ([], false) }
-            let line = #"{"id":"00000000-0000-0000-0000-000000000001","payload":"versionMismatch","type":"error","v":2}"#
+            let line = #"{"id":"00000000-0000-0000-0000-000000000001","payload":"versionMismatch","type":"error","v":1}"#
             return ([Data(line.utf8)], true)
         }
         let port = try await fake.start()

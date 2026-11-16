@@ -21,8 +21,17 @@ public struct Game: Codable, Equatable, Sendable {
 
     /// Applies a command atomically: on a `Rejection` the game stays unchanged.
     /// `expectedVersion`: the `state.version` the sender saw last (nil = no check).
+    /// Digital games shuffle with the system random number generator.
     public mutating func apply(
         _ command: Command, by actor: PlayerID, at now: Date, expectedVersion: Int? = nil
+    ) throws(Rejection) {
+        var rng = SystemRandomNumberGenerator()
+        try apply(command, by: actor, at: now, expectedVersion: expectedVersion, using: &rng)
+    }
+
+    /// Applies a command like ``apply(_:by:at:expectedVersion:)``, shuffling digital decks with `rng`.
+    public mutating func apply<R: RandomNumberGenerator>(
+        _ command: Command, by actor: PlayerID, at now: Date, expectedVersion: Int? = nil, using rng: inout R
     ) throws(Rejection) {
         if let expectedVersion, expectedVersion != state.version { throw .staleState }
         let version = state.version + 1
@@ -34,8 +43,14 @@ public struct Game: Codable, Equatable, Sendable {
             state = previous
         } else {
             var next = state
-            try next.apply(command, by: actor, at: now)
-            if command != .pauseClock, command != .resumeClock { history.append(state) }
+            try next.apply(command, by: actor, at: now, using: &rng)
+            var steps = command == .pauseClock || command == .resumeClock ? [] : [state]
+            if next.config.digitalCards, state.phase != .showdown, next.phase == .showdown {
+                // The cards decide, so the payout is automatic; the showdown stays in history for undo.
+                steps.append(next)
+                try next.resolveShowdown(next.showdownWinners())
+            }
+            history += steps
             state = next
         }
         state.version = version
@@ -43,7 +58,9 @@ public struct Game: Codable, Equatable, Sendable {
 }
 
 extension GameState {
-    mutating func apply(_ command: Command, by actor: PlayerID, at now: Date) throws(Rejection) {
+    mutating func apply<R: RandomNumberGenerator>(
+        _ command: Command, by actor: PlayerID, at now: Date, using rng: inout R
+    ) throws(Rejection) {
         switch command {
         case let .join(player, name):
             try requireLobbyHost(actor)
@@ -74,7 +91,7 @@ extension GameState {
             buttonIndex = b
             handNumber = 1
             clock.levelEndsAt = now + config.levels[0].duration
-            startHand()
+            startHand(using: &rng)
 
         case let .act(player, action):
             guard phase == .betting else { throw .invalidPhase }
@@ -94,7 +111,7 @@ extension GameState {
             guard phase == .handComplete else { throw .invalidPhase }
             guard actor == dealerID || actor == hostID else { throw .notDealer }
             clock.advance(to: now, levels: config.levels)
-            startNextHand()
+            startNextHand(using: &rng)
 
         case .pauseClock:
             guard actor == hostID else { throw .notHost }

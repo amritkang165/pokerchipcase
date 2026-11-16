@@ -136,9 +136,11 @@ final class RawClient: Sendable {
     func close() { channel.cancel() }
 }
 
-/// New table hosted by "Anna", named "Test", code 4711.
-func testSnapshot() -> HostSnapshot {
-    .newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
+/// New table hosted by "Anna", named "Test", code 4711; `digital` turns on digital cards.
+func testSnapshot(digital: Bool = false) -> HostSnapshot {
+    var config = TournamentConfig.relaxed
+    config.digitalCards = digital
+    return .newTable(hostName: "Anna", tableName: "Test", code: code4711, config: config)
 }
 
 /// Starts a host with a new table "Anna" (or `snapshot`) on loopback.
@@ -173,4 +175,35 @@ func startEchoListener(code: TableCode) async throws -> (NWListener, NWEndpoint.
         channel.start()
     }
     return (listener, try await listener.startAndWaitUntilReady(queue: .global()))
+}
+
+/// A host with Anna (host client) and Ben connected, both past `welcome` and the 2-seat `state`.
+struct Table {
+    let host: TableHost
+    let port: NWEndpoint.Port
+    let anna: RawClient
+    let ben: RawClient
+    let hostID: PlayerID
+    let benWelcome: Welcome
+    let version: Int
+
+    static func open(
+        snapshot: HostSnapshot = testSnapshot(),
+        onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }
+    ) async throws -> Table {
+        let (host, port) = try await startHost(snapshot, onChange: onChange)
+        let anna = try await RawClient.connect(port)
+        anna.send(hello("Anna", token: await host.snapshot.hostToken))
+        let hostID = try await anna.welcome().player
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben"))
+        let benWelcome = try await ben.welcome()
+        let state = try await anna.state { $0.seats.count == 2 }
+        _ = try await ben.state { $0.seats.count == 2 }
+        return Table(host: host, port: port, anna: anna, ben: ben, hostID: hostID, benWelcome: benWelcome, version: state.version)
+    }
+
+    func command(_ command: Command, version: Int? = nil) -> ClientMessage {
+        .command(CommandRequest(command: command, stateVersion: version ?? self.version))
+    }
 }

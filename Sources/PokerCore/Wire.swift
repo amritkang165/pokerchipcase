@@ -116,10 +116,10 @@ public enum WireError: Error, Equatable {
     case unknownType(String)
 }
 
-/// JSON envelope `{"v": 1, "type": "<case>", "id": "<UUID>", "payload": …}`, see the PokerNet protocol article.
+/// JSON envelope `{"v": 2, "type": "<case>", "id": "<UUID>", "payload": …}`, see the PokerNet protocol article.
 public enum Wire {
     /// Protocol version in the envelope `v` field; a message with another value is refused.
-    public static let version = 1
+    public static let version = 2
     /// Bonjour service type the host advertises and clients browse for.
     public static let serviceType = "_pokerchipcase._tcp"
 

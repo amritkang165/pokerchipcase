@@ -39,28 +39,16 @@ private func chipsInPlay(_ g: Game) -> Chips {
     #expect(computePots([a, b, c]) == [Pot(amount: 300, eligible: ["B", "C"]), Pot(amount: 500, eligible: ["C"])])
 }
 
-/// SplitMix64: deterministic randomness for reproducible tournaments.
-private struct SeededRNG: RandomNumberGenerator {
-    var state: UInt64
-    mutating func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z >> 31)
-    }
-}
-
-@Test func chipsAreConservedInRandomTournaments() throws {
+@Test(arguments: [false, true]) func chipsAreConservedInRandomTournaments(digital: Bool) throws {
     for seed in 0..<300 {
         var rng = SeededRNG(state: UInt64(seed))
         let ids = ["A", "B", "C", "D", "E", "F"].prefix(Int.random(in: 2...6, using: &rng))
         var stacks: [(PlayerID, Chips)] = ids.map { ($0, Int.random(in: 1...1500, using: &rng)) }
         let host = stacks[0].0
-        var g = Game(hostID: host, hostName: host, config: TournamentConfig(startingStack: 1000, levels: tenTwenty))
+        var g = Game(hostID: host, hostName: host, config: TournamentConfig(startingStack: 1000, levels: tenTwenty, digitalCards: digital))
         for (id, _) in stacks.dropFirst() { try g.apply(.join(player: id, name: id), by: host, at: t0) }
         for (id, s) in stacks { g.state.seats[g.state.index(of: id)!].stack = s }
-        try g.apply(.startTournament(button: host), by: host, at: t0)
+        try g.apply(.startTournament(button: host), by: host, at: t0, using: &rng)
         let total = stacks.reduce(0) { $0 + $1.1 }
         stacks = []
 
@@ -73,13 +61,13 @@ private struct SeededRNG: RandomNumberGenerator {
                 var options: [Action] = [.fold, la.canCheck ? .check : .call, .allIn]
                 if let lo = la.minRaiseTo, let hi = la.maxRaiseTo { options.append(.raiseTo(amount: Int.random(in: lo...hi, using: &rng))) }
                 if !la.mayRaiseAllIn(s, p) { options.removeAll { $0 == .allIn } }
-                try g.act(options.randomElement(using: &rng)!)
+                try g.apply(.act(player: p, action: options.randomElement(using: &rng)!), by: p, at: t0, using: &rng)
             case .showdown:
                 #expect(s.pots.reduce(0) { $0 + $1.amount } == s.potTotal, "seed \(seed)")
                 let winners = s.pots.map { [$0.eligible.randomElement(using: &rng)!] }
                 try g.apply(.resolveShowdown(winners: winners), by: s.dealerID!, at: t0)
             case .handComplete:
-                try g.apply(.startNextHand, by: host, at: t0)
+                try g.apply(.startNextHand, by: host, at: t0, using: &rng)
             case .lobby, .finished:
                 break
             }

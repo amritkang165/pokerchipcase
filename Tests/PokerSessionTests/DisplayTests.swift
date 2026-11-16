@@ -25,6 +25,13 @@ import Testing
     #expect(g.state.phase == .showdown && g.state.street == .preflop && g.state.dealerHint == .dealRest)
 }
 
+@Test func noDealerHintWithDigitalCards() throws {
+    var g = try started()
+    #expect(g.state.dealerHint == .dealHand)
+    g.state.config.digitalCards = true
+    #expect(g.state.dealerHint == nil)
+}
+
 @Test func noHintWhenTheHandIsWonByFolds() throws {
     var g = try started()
     try g.act(.fold); try g.act(.fold)

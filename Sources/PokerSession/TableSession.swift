@@ -72,7 +72,8 @@ public enum ConnectionStatus: Equatable, Sendable {
 
     let client: TableClient
     private(set) var tableHost: TableHost?
-    private(set) var port: NWEndpoint.Port?
+    /// The host's listening port; nil on a guest.
+    public private(set) var port: NWEndpoint.Port?
     private let name: String
     private let saveFile: SaveFile<HostSnapshot>?
     private let ticketFile: SaveFile<SeatTicket>?
