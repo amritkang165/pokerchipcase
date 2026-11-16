@@ -35,6 +35,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// Reverts the last command other than a clock pause or resume; host only. The clock itself is not rolled back.
     /// In a digital game the first undo after a showdown returns to the showdown before the automatic payout.
     case undo
+    /// Makes another seated player the host; host only, not in the lobby and not after the tournament finished.
+    /// The host device then hands the table over, see the PokerNet protocol article.
+    case transferHost(to: PlayerID)
 }
 
 /// Why a command was refused; the game stays unchanged.
@@ -67,4 +70,6 @@ public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case nothingToUndo
     /// The command was based on an outdated state.
     case staleState
+    /// The player a host handover names has no live connection to the host.
+    case playerOffline
 }
