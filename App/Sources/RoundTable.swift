@@ -70,10 +70,11 @@ struct RoundTable: View {
         }
         .aspectRatio(1, contentMode: .fit)
         // From the screen height, not the space left over: that changes with the phase and
-        // the dealer hint, and the table would grow and shrink with it. 338 points are the tallest
-        // rest of the screen on an iPhone SE: header, stack and the raise slider. That is 57 % of its
-        // height; taller phones give everything above those points to the table, up to the screen width.
-        .containerRelativeFrame(.vertical) { height, _ in max(height * 0.43, height - 338) }
+        // the dealer hint, and the table would grow and shrink with it. 300 points stay for the
+        // rest of the screen; on an iPhone SE the stack number shrinks while the dealer banner
+        // shows, so the table keeps its size. Taller phones give everything above those points
+        // to the table, up to the screen width.
+        .containerRelativeFrame(.vertical) { height, _ in max(height * 0.43, height - 300) }
         // The layout constants assume at most this size; larger text would overlap the seats.
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
