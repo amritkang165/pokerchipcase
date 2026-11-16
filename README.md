@@ -26,7 +26,7 @@ No account, no server, no internet. The phones talk directly over the local Wi-F
 - Fold, check, call, raise and all-in, with the rules enforced by the host
 - Side pots, split between the eligible players
 - Blind clock with pause and resume
-- Undo for the host
+- Undo for the host, within the current hand
 - The host's table survives an app restart, and players get their seat back after a dropped connection
 - The host can hand the table over to another player's phone and leave
 - Optional digital cards: the app deals, each player sees only their own hole cards, and the showdown pays out by itself

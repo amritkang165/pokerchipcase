@@ -58,3 +58,24 @@ private extension GameState {
     try g.apply(.undo, by: "A", at: t0 + 100)
     #expect(g.state.seat("A")?.folded == false && g.state.clock.isPaused)
 }
+
+@Test func startTournamentKeepsOnlyTheLastLobbyState() throws {
+    var g = Game(hostID: "A", hostName: "A", config: .relaxed)
+    try g.apply(.join(player: "B", name: "B"), by: "A", at: t0)
+    try g.apply(.join(player: "C", name: "C"), by: "A", at: t0)
+    let lobby = g.state
+    try g.apply(.startTournament(button: "A"), by: "A", at: t0)
+    #expect(g.history == [lobby])
+}
+
+@Test func undoReachesOnlyBackToTheEndOfThePreviousHand() throws {
+    var g = try Game.started()
+    try g.act(.call); try g.act(.call); try g.checkDown()
+    try g.apply(.resolveShowdown(winners: [["B"]]), by: "A", at: t0)
+    let complete = g.state
+    try g.apply(.startNextHand, by: "A", at: t0)
+    #expect(g.history.count == 1)
+    try g.apply(.undo, by: "A", at: t0)
+    #expect(g.state.ignoringVersion == complete.ignoringVersion)
+    #expect(throws: Rejection.nothingToUndo) { try g.apply(.undo, by: "A", at: t0) }
+}
