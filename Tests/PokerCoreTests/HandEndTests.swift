@@ -72,3 +72,16 @@ import Testing
     #expect(g.state.phase == .finished)
     #expect(g.state.seat("B")?.eliminatedRank == 2 && g.state.seat("C")?.eliminatedRank == 2)
 }
+
+@Test func removedPlayerIsOutAndCannotBeRemovedAgain() throws {
+    var g = try Game.started()
+    try g.apply(.removePlayer(player: "B"), by: "A", at: t0)
+    #expect(g.state.seat("B")?.isOut == true && g.state.seat("B")?.isEliminated == false)
+    #expect(throws: Rejection.unknownPlayer) { try g.apply(.removePlayer(player: "B"), by: "A", at: t0) }
+}
+
+@Test func allInPlayerIsNotOut() throws {
+    var g = try Game.started()
+    try g.act(.allIn)
+    #expect(g.state.seat("A")?.stack == 0 && g.state.seat("A")?.isOut == false)
+}

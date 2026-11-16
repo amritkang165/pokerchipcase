@@ -14,7 +14,7 @@ struct PokerChipCaseApp: App {
         WindowGroup {
             Group {
                 if let session {
-                    TableScreen(session: session, onLeave: { self.session = nil })
+                    TableScreen(session: session, nearby: nearby, onLeave: { self.session = nil })
                         .id(ObjectIdentifier(session))
                 } else {
                     StartView(onSession: { session = $0 }, nearby: nearby)

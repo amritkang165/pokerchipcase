@@ -103,6 +103,10 @@ public struct Seat: Codable, Equatable, Sendable {
 
     /// True once the player has a final rank: busted at the end of a hand, or removed by the host (from the end of that hand on).
     public var isEliminated: Bool { eliminatedRank != nil }
+
+    /// True once the player no longer plays: eliminated, or removed by the host in the current hand.
+    /// Only a removed player folds with no chips; an all-in player has no chips but has not folded.
+    public var isOut: Bool { isEliminated || (folded && stack == 0) }
 }
 
 /// Where the game is in its lifecycle.

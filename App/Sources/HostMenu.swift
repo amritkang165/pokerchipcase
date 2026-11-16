@@ -25,12 +25,12 @@ struct HostMenu: View {
     /// `removeFromGame` accepts only these phases.
     private var removable: [Seat] {
         guard state.phase == .betting || state.phase == .handComplete else { return [] }
-        return state.seats.filter { $0.id != state.hostID && !$0.isEliminated }
+        return state.seats.filter { $0.id != state.hostID && !$0.isOut }
     }
 
     private var successors: [Seat] {
         guard state.phase != .finished else { return [] }
-        return state.seats.filter { $0.id != state.hostID && !$0.isEliminated }
+        return state.seats.filter { $0.id != state.hostID && !$0.isOut }
     }
 
     /// After an automatic payout with revealed hands, undo goes back to the showdown to pick winners by hand.

@@ -54,7 +54,7 @@ public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case illegalAction
     /// A raise is below the minimum or above the player's stack.
     case invalidAmount
-    /// The player is not seated or already eliminated, or `arrangeSeats` does not list every seated player exactly once.
+    /// The player is not seated, already eliminated or already removed, or `arrangeSeats` does not list every seated player exactly once.
     case unknownPlayer
     /// A player with this ID is already seated.
     case duplicatePlayer

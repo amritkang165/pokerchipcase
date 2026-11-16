@@ -61,6 +61,27 @@ struct HostLobbyTests {
         await host.stop()
     }
 
+    @Test func seatNameIsTrimmedCutAndNeverEmpty() {
+        #expect(TableHost.seatName("  Ben \n") == "Ben")
+        #expect(TableHost.seatName(String(repeating: "x", count: 1000)) == String(repeating: "x", count: 32))
+        // 18 bytes each: the byte cap stops at 14 whole emoji, never inside one.
+        #expect(TableHost.seatName(String(repeating: "👨‍👩‍👧", count: 40)) == String(repeating: "👨‍👩‍👧", count: 14))
+        #expect(TableHost.seatName(" \n ") == "Player")
+        // One Character of 600,001 bytes: the cap must count bytes too.
+        let heavy = TableHost.seatName("a" + String(repeating: "\u{0301}", count: 300_000))
+        #expect(heavy.utf8.count <= TableHost.maxNameBytes)
+        #expect(heavy == "Player")
+    }
+
+    @Test func longNameIsCutOnJoin() async throws {
+        let (host, port) = try await startHost()
+        let ben = try await RawClient.connect(port)
+        ben.send(hello(String(repeating: "B", count: 100_000)))
+        let w = try await ben.welcome()
+        #expect(try await ben.state().seat(w.player)?.name.count == TableHost.maxNameLength)
+        await host.stop()
+    }
+
     @Test func unknownTokenJoinsAsNewPlayer() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)

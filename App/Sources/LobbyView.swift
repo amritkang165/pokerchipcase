@@ -8,7 +8,8 @@ struct LobbyView: View {
     @State private var dealer: PlayerID?
     /// The order just dragged, shown until the host's state with it arrives, so the row does not jump back.
     @State private var moved: [PlayerID]?
-    @State private var nearby = NearbyTables()
+    /// The app's browser, which runs for the whole app life; read here only for `localNetworkDenied`.
+    let nearby: NearbyTables
     @Environment(\.theme) private var theme
     #if DEBUG
     @AppStorage("debugBotCount") private var botCount = 9
@@ -16,9 +17,10 @@ struct LobbyView: View {
     @AppStorage("debugBotStyle") private var botStyle = BotStyle.call
     #endif
 
-    init(session: TableSession, state: GameState) {
+    init(session: TableSession, state: GameState, nearby: NearbyTables) {
         self.session = session
         self.state = state
+        self.nearby = nearby
     }
 
     private var seats: [Seat] { moved.map { $0.compactMap(state.seat) } ?? state.seats }
@@ -100,7 +102,6 @@ struct LobbyView: View {
             }
         }
         .environment(\.editMode, .constant(session.isHost ? .active : .inactive))
-        .task { if session.isHost { await nearby.run() } }
         #if DEBUG
         .task { if DebugBots.auto, session.isHost { await DebugBots.autoStart(session) } }
         #endif

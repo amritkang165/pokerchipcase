@@ -39,6 +39,22 @@ public actor TableHost {
     /// Undo steps a handover carries; the whole history of a long tournament exceeds `MessageChannel.maxMessageSize`.
     static let handoverHistory = 50
 
+    /// Longest seat name a guest gets, in characters; the host cuts longer names, which bloat every state message.
+    static let maxNameLength = 32
+    /// Byte limit for the same name: one character can hold any number of combining marks.
+    static let maxNameBytes = 256
+
+    /// The name a guest is seated with: trimmed, at most ``maxNameLength`` whole characters and ``maxNameBytes``
+    /// bytes, "Player" if nothing is left.
+    static func seatName(_ raw: String) -> String {
+        var name = ""
+        for c in raw.trimmingCharacters(in: .whitespacesAndNewlines) {
+            guard name.count < maxNameLength, name.utf8.count + c.utf8.count <= maxNameBytes else { break }
+            name.append(c)
+        }
+        return name.isEmpty ? "Player" : name
+    }
+
     /// `onChange` receives every new snapshot; persist it to resume after a crash.
     /// `helloTimeout`: a connection that has not finished TLS and `hello` by then is closed.
     /// `liveWindow`: a handover target must have sent a message within this time.
@@ -248,8 +264,8 @@ public actor TableHost {
             Task { await finishHandover(to: target) }
             return
         }
-        if case let .removePlayer(removed) = request.command { forget(removed) }
-        forgetRemovedPlayers()
+        if case let .removePlayer(removed) = request.command { kick(removed) }
+        kickUnseatedPlayers()
         onChange(snapshot)
         // State before ack: when a client's send returns, it already knows the new state version.
         broadcastState()
@@ -268,16 +284,16 @@ public actor TableHost {
         disconnectAll()
     }
 
-    /// A player removed mid-game keeps the seat (folded, out) but loses the token and connection.
-    private func forget(_ player: PlayerID) {
-        snapshot.tokens = snapshot.tokens.filter { $0.value != player }
+    /// A player removed mid-game keeps the seat (folded, out) and the token, so an undo can give the seat back;
+    /// the connection closes.
+    private func kick(_ player: PlayerID) {
         for (id, p) in bound where p == player { reject(.removed, id, replyTo: nil) }
     }
 
-    /// Players without a seat (removed in the lobby, or their join was undone) lose their token and connection.
-    private func forgetRemovedPlayers() {
+    /// Players without a seat (removed in the lobby, or their join was undone) lose their connection.
+    /// Their token stays, but `welcome` only honors tokens of seated players.
+    private func kickUnseatedPlayers() {
         let seated = Set(snapshot.game.state.seats.map(\.id))
-        snapshot.tokens = snapshot.tokens.filter { seated.contains($0.value) }
         for (id, player) in bound where !seated.contains(player) {
             reject(.removed, id, replyTo: nil)
         }
@@ -289,7 +305,7 @@ public actor TableHost {
         }
         let player: PlayerID
         let token: String
-        if let t = hello.token, let p = snapshot.tokens[t] {
+        if let t = hello.token, let p = snapshot.tokens[t], snapshot.game.state.seat(p) != nil {
             player = p
             token = t
             // The newest connection for a player wins. Usually the old one is dead; if it is another
@@ -298,7 +314,7 @@ public actor TableHost {
         } else {
             player = UUID().uuidString
             do {
-                try snapshot.game.apply(.join(player: player, name: hello.name), by: snapshot.game.state.hostID, at: Date())
+                try snapshot.game.apply(.join(player: player, name: Self.seatName(hello.name)), by: snapshot.game.state.hostID, at: Date())
             } catch .tableFull {
                 return reject(.tableFull, id, replyTo: requestID)
             } catch {
