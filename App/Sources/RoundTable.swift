@@ -115,7 +115,9 @@ struct RoundTable: View {
         .minimumScaleFactor(0.7)
         .padding(.horizontal, 5).padding(.vertical, 2)
         .frame(maxWidth: width)
-        .background(look == .selected ? theme.accent.opacity(0.35) : theme.seat, in: .rect(cornerRadius: 8))
+        // The winner tint lies over the seat fill: over a light rail alone it left light text on a light ground.
+        .background(look == .selected ? theme.accent.opacity(0.35) : .clear, in: .rect(cornerRadius: 8))
+        .background(theme.seat, in: .rect(cornerRadius: 8))
         .overlay {
             if acting {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(theme.accent, lineWidth: 2)

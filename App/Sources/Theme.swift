@@ -135,7 +135,8 @@ struct Theme: Sendable {
     var muted: Color
     var accent: Color
     var onAccent: Color
-    /// Tint for system-drawn UI in the window's scheme (alerts, dialogs), readable on its light or dark material.
+    /// The accent wherever it is text or a control tint: on the room, the screen and system material (alerts,
+    /// dialogs). The accent itself where that reads at 4.5:1, else the ink. Never used as a button fill.
     var formTint: Color
     var fold: Color
     var onFold: Color
@@ -177,7 +178,7 @@ private struct ThemedScreen: ViewModifier {
             .background(theme.screen.ignoresSafeArea())
             // No foregroundStyle, not even a hierarchical one: in a Form it overrides button tint and the
             // destructive role's red. Section headers set theme.muted themselves.
-            .tint(theme.accent)
+            .tint(theme.formTint)
             .toolbarBackground(theme.screen, for: .navigationBar)
     }
 }

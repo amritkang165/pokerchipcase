@@ -53,7 +53,7 @@ struct TableView: View {
         // No side padding for the table: the seat labels use the full width.
         .foregroundStyle(theme.text)
         .background { RoomBackground() }
-        .tint(theme.accent)
+        .tint(theme.formTint)
         .toolbarBackground(theme.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .sensoryFeedback(.success, trigger: iWon) { _, won in won }
@@ -90,7 +90,7 @@ struct TableView: View {
         VStack(spacing: 2) {
             let level = state.currentLevel
             Text("Level \(state.clock.levelIndex + 1) · \(level.smallBlind)/\(level.bigBlind)").font(.headline)
-                .foregroundStyle(theme.accent)
+                .foregroundStyle(theme.formTint)
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 if state.clock.isPaused {
                     Text("Paused")
