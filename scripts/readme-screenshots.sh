@@ -15,12 +15,16 @@ xcrun simctl status_bar "$SIM" override --time 9:41 --batteryState charged --bat
 
 # shot <file> <-debugStop> <-appearance> <seconds until the scene is reached>
 shot() {
+    file=$OUT/$1.png
+    stop=$2
+    appearance=$3
+    seconds=$4
     xcrun simctl terminate "$SIM" "$APP_ID" 2>/dev/null || true
-    xcrun simctl launch "$SIM" "$APP_ID" -debugTable -playerName Alex -debugStop "$2" -appearance "$3" >/dev/null
-    sleep "$4"
-    xcrun simctl io "$SIM" screenshot "$OUT/$1.png" >/dev/null 2>&1
-    sips --resampleWidth 600 "$OUT/$1.png" >/dev/null
-    echo "$OUT/$1.png"
+    xcrun simctl launch "$SIM" "$APP_ID" -debugTable -playerName Alex -debugStop "$stop" -appearance "$appearance" >/dev/null
+    sleep "$seconds"
+    xcrun simctl io "$SIM" screenshot "$file" >/dev/null 2>&1
+    sips --resampleWidth 600 "$file" >/dev/null
+    echo "$file"
 }
 
 shot lobby lobby felt 12

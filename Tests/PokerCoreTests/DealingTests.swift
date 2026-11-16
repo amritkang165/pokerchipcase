@@ -31,8 +31,11 @@ private func allCards(_ s: GameState) -> [Card] { s.seats.flatMap(\.holeCards) +
         try g.apply(.startTournament(button: "A"), by: "A", at: t0, using: &rng)
         return g.state
     }
-    #expect(try deal(seed: 1) == deal(seed: 1))
-    #expect(try deal(seed: 1).seats.map(\.holeCards) != deal(seed: 2).seats.map(\.holeCards))
+    let first = try deal(seed: 1)
+    let again = try deal(seed: 1)
+    let other = try deal(seed: 2)
+    #expect(first == again)
+    #expect(first.seats.map(\.holeCards) != other.seats.map(\.holeCards))
 }
 
 @Test func undoMidHandKeepsTheCards() throws {       // Review Focus 4
