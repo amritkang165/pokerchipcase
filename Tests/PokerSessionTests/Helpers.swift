@@ -57,16 +57,19 @@ func eventually(timeout: Duration = .seconds(5), sourceLocation: SourceLocation 
 }
 
 /// Hosts a new table "Test" (Anna, code 4711, .relaxed) and waits for the first state.
-@MainActor func hostSession(_ file: SaveFile<HostSnapshot> = tempFile()) async throws -> TableSession {
+@MainActor func hostSession(_ file: SaveFile<HostSnapshot> = tempFile(),
+                            ticketFile: SaveFile<SeatTicket> = tempFile()) async throws -> TableSession {
     let s = try await TableSession.host(
-        .newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed), saveFile: file)
+        .newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed), saveFile: file,
+        ticketFile: ticketFile)
     try await eventually { s.state != nil }
     return s
 }
 
 /// Joins `host` over loopback (host.port).
 @MainActor func guestSession(_ host: TableSession, name: String = "Ben", token: String? = nil,
-                             code: TableCode = code4711, ticketFile: SaveFile<SeatTicket> = tempFile()) async -> TableSession {
+                             code: TableCode = code4711, ticketFile: SaveFile<SeatTicket> = tempFile(),
+                             saveFile: SaveFile<HostSnapshot> = tempFile()) async -> TableSession {
     await TableSession.join(endpoint: .hostPort(host: "127.0.0.1", port: host.port!), tableName: host.tableName,
-                            code: code, name: name, token: token, ticketFile: ticketFile)
+                            code: code, name: name, token: token, ticketFile: ticketFile, saveFile: saveFile)
 }

@@ -268,6 +268,35 @@ struct SessionTests {
         #expect(ben.problem?.action == .send && !ben.isSending)
     }
 
+    // A suspended host can apply a command after the guest gave up on its ack; the next state ends the banner.
+    @Test func failedSendClearsOnANewerState() async throws {
+        let file: SaveFile<HostSnapshot> = tempFile()
+        let anna = try await hostSession(file)
+        let ben = await guestSession(anna)
+        defer { Task { await ben.leave() } }
+        try await eventually { ben.connection == .connected && file.load()?.game.state.seats.count == 2 }
+        let snap = try #require(file.load())
+        let port = anna.port!
+        await anna.tableHost!.stop()
+        await anna.client.disconnect()
+        try await eventually { ben.connection == .reconnecting }
+        await ben.send(.startNextHand)
+        #expect(ben.problem?.action == .send)
+        // stop() cancels the listener asynchronously; the old port can stay taken for a moment (EADDRINUSE on CI).
+        var rebound: TableSession?
+        for _ in 0..<50 where rebound == nil {
+            rebound = try? await TableSession.host(snap, saveFile: file, port: port)
+            if rebound == nil { try await Task.sleep(for: .milliseconds(100)) }
+        }
+        let resumed = try #require(rebound)
+        defer { Task { await resumed.leave() } }
+        try await eventually { ben.connection == .connected }
+        let cem = await guestSession(resumed, name: "Cem")
+        defer { Task { await cem.leave() } }
+        try await eventually { ben.state?.seats.count == 3 }
+        #expect(ben.problem == nil)
+    }
+
     @Test func failedStartRestoresThePreviousSave() async throws {
         let blocker = try await hostSession()  // occupies its port
         defer { Task { await blocker.leave() } }

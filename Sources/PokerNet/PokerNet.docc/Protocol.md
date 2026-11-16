@@ -1,4 +1,4 @@
-# PokerChipCase Protocol (version 2)
+# PokerChipCase Protocol (version 3)
 
 This document describes everything a compatible client (for example an Android app) needs to join a PokerChipCase table. The types in `Sources/PokerCore/` (for example `ClientMessage`, `ServerMessage` and `GameState`) and the golden tests in `Tests/PokerCoreTests/WireTests.swift` are authoritative.
 
@@ -22,7 +22,7 @@ A wrong table code makes the TLS handshake fail: the host cannot verify the clie
 Every message, in both directions:
 
 ```json
-{"id":"<UUID>","payload":<payload>,"type":"<type>","v":2}
+{"id":"<UUID>","payload":<payload>,"type":"<type>","v":3}
 ```
 
 - `v` – protocol version. Messages with a different version are rejected.
@@ -48,7 +48,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 ### `hello` – join or reconnect
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":2}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":3}
 ```
 
 Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
@@ -56,7 +56,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 ### `command` – every game command
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"command":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"stateVersion":7},"type":"command","v":2}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"command":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"stateVersion":7},"type":"command","v":3}
 ```
 
 `stateVersion` is `version` from the last `state` received. If it no longer matches the host's, the command is rejected with `staleState`. This discards double taps that arrive after the state has changed.
@@ -65,6 +65,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 |---|---|---|
 | `join` | `player`, `name` | host only (the host issues it itself after `hello`) |
 | `removePlayer` | `player` | host, not for itself; in the lobby also a guest for their own seat (to leave the table). The host answers a guest's own removal with no `ack`: it closes the connection with the `removed` error under a new envelope `id`, not the command's. |
+| `transferHost` | `to` (player ID) | host; not in the lobby and not after the tournament finished. See "Host handover". |
 | `arrangeSeats` | `order` (all player IDs) | host, lobby only |
 | `startTournament` | `button` | host, at least 2 players |
 | `act` | `player`, `action` | the player when it is their turn; the host additionally `fold`/`check` for others |
@@ -89,7 +90,7 @@ Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet 
 ### `ping` – heartbeat
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":2}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"ping","v":3}
 ```
 
 Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, also before `hello`; it does not replace `hello`.
@@ -99,7 +100,7 @@ Send it every 5 s after `welcome`. The host answers every `ping` with `pong`, al
 ### `welcome` – reply to `hello`
 
 ```json
-{"id":"…","payload":{"player":"B","token":"…"},"type":"welcome","v":2}
+{"id":"…","payload":{"player":"B","token":"…"},"type":"welcome","v":3}
 ```
 
 Keep the token secret and store it for reconnects.
@@ -107,12 +108,12 @@ Keep the token secret and store it for reconnects.
 ### `ack` – reply to a `command`
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":2}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":3}
 ```
 
 `payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). The exception is a guest's own `removePlayer` (see above). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}` (see `Rejection`).
 
-Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidConfig`, `invalidShowdown`, `nothingToUndo`, `staleState`.
+Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidConfig`, `invalidShowdown`, `nothingToUndo`, `staleState`, `playerOffline`.
 
 ### `state` – complete table state
 
@@ -133,7 +134,8 @@ The payload is a `GameState`. Sent to all clients after every change; each clien
 | `deck` | always `[]` for clients |
 | `config` | `startingStack`, `levels[]` with `smallBlind`, `bigBlind`, `duration`, `digitalCards` (true when the app deals the cards) |
 | `version` | increases with every change; send it back as `stateVersion` in `command` |
-| `hostID`, `handNumber` | |
+| `hostID` | changes when the host hands the table over |
+| `handNumber` | |
 
 Clients only display what the last `state` says and never change it themselves.
 
@@ -148,15 +150,23 @@ Hole cards of a seat are revealed to everyone when the phase is `showdown`, `han
 ### `pong` – heartbeat answer
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":2}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{},"type":"pong","v":3}
 ```
 
 The envelope `id` equals the `ping`'s `id`.
 
+### `handover` – take the table over
+
+```json
+{"id":"…","payload":{"game":{"history":[…],"state":{…}},"tokens":{"<token>":"<player ID>"}},"type":"handover","v":3}
+```
+
+Sent to exactly one client: the player a `transferHost` named. `game.state` is the unredacted `GameState`, with every seat's `holeCards` and the `deck`. `game.history` holds the newest undo steps (at most 50), oldest first, each a `GameState`. `tokens` maps every reconnect token to its player. The host closes the connection right after this message.
+
 ### `error`
 
 ```json
-{"id":"…","payload":"versionMismatch","type":"error","v":2}
+{"id":"…","payload":"versionMismatch","type":"error","v":3}
 ```
 
 `payload` is a code; the app translates it into text. If the error answers a message whose envelope header could be read, the error's envelope `id` equals that message's `id`, so a client waiting for an `ack` can treat it as the answer.
@@ -189,9 +199,22 @@ Client                          Host
 
 On success the host sends the new `state` before the `ack`, so a client that waits for the `ack` already knows the new `version`.
 
+## Host handover
+
+The host can move the table to another player's device, for example before leaving.
+
+1. The host device's own client sends `transferHost` with the target's player ID.
+2. The host answers `rejected` with `playerOffline` if the target has no connection that sent any message in the last 12 s. This check comes before the other rules. A client that pings every 5 s passes it.
+3. Otherwise the host sets `hostID` to the target, broadcasts the `state`, acks, and ignores every later message.
+4. The host stops listening and withdraws its Bonjour service, sends `handover` to the target and closes every connection. It sends no `tableClosed`.
+5. The target starts listening, advertises the same table name and accepts the same code and tokens.
+6. Every other client, the old host included, sees a dropped connection and reconnects to the service name with its token as usual.
+
+`undo` never changes `hostID`. If the target does not take over, the old host can open the table again from its save, which holds the state before the transfer.
+
 ## Versions
 
-If the format changes incompatibly, `v` increases. A receiver treats any message with a different `v` as `versionMismatch` and stops retrying. Version 2 added the card fields (`config.digitalCards`, `board`, `deck`, `seats[].holeCards`).
+If the format changes incompatibly, `v` increases. A receiver treats any message with a different `v` as `versionMismatch` and stops retrying. Version 2 added the card fields (`config.digitalCards`, `board`, `deck`, `seats[].holeCards`). Version 3 added the host handover (`transferHost`, `handover`, `playerOffline`).
 
 ## Recommendations for clients
 
@@ -203,6 +226,8 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 - Any other `error` before `welcome` answers your `hello`, so the host cannot serve this client (for example an older host that answers `malformed` to a newer `hello`). Stop and treat it like `versionMismatch` instead of waiting for a `welcome` that never comes.
 - Treat a `bad_record_mac` alert during the TLS handshake as a wrong code (do not retry). Retry every other failure, before or after the handshake: a host that is suspended or shuts down mid-handshake ends the connection with a reset or another TLS error.
 - Resolve the Bonjour service to an address before the TLS connection. Apple's Network.framework retries a failed handshake on a service endpoint forever instead of reporting it, so a wrong code would never fail. The iOS app resolves with a plain TCP connection, which the host sees as one extra connection that ends before TLS.
+- After a dropped connection, resolve the Bonjour service name again instead of reusing the old address: the table may have moved to another device.
+- A client that cannot host ignores `handover`. Tell the user, because the table is down until the old host opens it again.
 - The cipher suite is plain TLS-PSK, which not every TLS stack offers by default (on Android, check the platform stack; BouncyCastle `bctls` supports it).
 
 ## Security
@@ -212,4 +237,5 @@ The protocol is built for a home game among friends, not for hostile networks:
 - Plain PSK has no forward secrecy. Anyone who records one handshake can brute-force the 4-digit code offline and then decrypt that traffic.
 - Everyone at the table knows the code. A player who records another player's traffic can read that player's token and take over their seat.
 - The host device and its save file hold every card, including the deck. A player who records another player's handshake and brute-forces the code can read that player's hole cards.
+- A `handover` gives the target everything the host holds: every card, the deck and every token.
 - The code mainly prevents joining the wrong table by accident and keeps casual observers out.

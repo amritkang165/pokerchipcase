@@ -81,7 +81,7 @@ struct HostCommandTests {
     @Test func errorReplyCarriesRequestID() async throws {
         let t = try await Table.open()
         let id = UUID()
-        let raw = #"{"id":"\#(id.uuidString)","payload":{"command":{"bogus":{}},"stateVersion":0},"type":"command","v":2}"#
+        let raw = #"{"id":"\#(id.uuidString)","payload":{"command":{"bogus":{}},"stateVersion":0},"type":"command","v":3}"#
         t.ben.sendRaw(Data(raw.utf8))
         let reply = try await t.ben.nextEnvelope { $0.error != nil }
         #expect(reply.message.error == WireErrorCode.malformed.rawValue && reply.id == id)

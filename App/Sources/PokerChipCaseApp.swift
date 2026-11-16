@@ -15,10 +15,12 @@ struct PokerChipCaseApp: App {
             Group {
                 if let session {
                     TableScreen(session: session, onLeave: { self.session = nil })
+                        .id(ObjectIdentifier(session))
                 } else {
                     StartView(onSession: { session = $0 }, nearby: nearby)
                 }
             }
+            .onChange(of: session?.successor.map(ObjectIdentifier.init)) { if let next = session?.successor { session = next } }
             // preferredColorScheme forces the window's scheme; themed() picks the theme from it.
             .task { await nearby.run() }
             .themed()

@@ -44,6 +44,7 @@ extension Rejection {
         case .invalidShowdown: "Pick at least one winner for every pot"
         case .nothingToUndo: "Nothing to undo"
         case .staleState: "The table changed – please try again"
+        case .playerOffline: "That player's app is not open"
         }
     }
 }

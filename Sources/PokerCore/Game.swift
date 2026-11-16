@@ -40,11 +40,13 @@ public struct Game: Codable, Equatable, Sendable {
             guard var previous = history.popLast() else { throw .nothingToUndo }
             // The clock is not undone: a pause survives undoing the misclick it was taken for.
             if previous.phase != .lobby { previous.clock = state.clock }
+            // The host is not undone: the phone that handed the table over no longer serves it.
+            previous.hostID = state.hostID
             state = previous
         } else {
             var next = state
             try next.apply(command, by: actor, at: now, using: &rng)
-            var steps = command == .pauseClock || command == .resumeClock ? [] : [state]
+            var steps = [.pauseClock, .resumeClock].contains(command) || command.isTransferHost ? [] : [state]
             if next.config.digitalCards, state.phase != .showdown, next.phase == .showdown {
                 // The cards decide, so the payout is automatic; the showdown stays in history for undo.
                 steps.append(next)
@@ -54,6 +56,17 @@ public struct Game: Codable, Equatable, Sendable {
             state = next
         }
         state.version = version
+    }
+
+    /// Drops all but the `count` newest undo steps.
+    public mutating func keepHistory(last count: Int) {
+        history = Array(history.suffix(count))
+    }
+}
+
+extension Command {
+    fileprivate var isTransferHost: Bool {
+        if case .transferHost = self { true } else { false }
     }
 }
 
@@ -122,6 +135,13 @@ extension GameState {
             guard actor == hostID else { throw .notHost }
             guard clock.isPaused else { throw .invalidPhase }
             clock.resume(at: now)
+
+        case let .transferHost(player):
+            guard actor == hostID else { throw .notHost }
+            guard phase != .lobby, phase != .finished else { throw .invalidPhase }
+            guard seat(player) != nil else { throw .unknownPlayer }
+            guard player != hostID else { throw .illegalAction }
+            hostID = player
 
         default:
             throw .invalidPhase

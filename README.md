@@ -28,6 +28,7 @@ No account, no server, no internet. The phones talk directly over the local Wi-F
 - Blind clock with pause and resume
 - Undo for the host
 - The host's table survives an app restart, and players get their seat back after a dropped connection
+- The host can hand the table over to another player's phone and leave
 - Optional digital cards: the app deals, each player sees only their own hole cards, and the showdown pays out by itself
 - Felt, Dark and System appearance, and a choice of card backs
 
