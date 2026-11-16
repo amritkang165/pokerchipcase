@@ -72,7 +72,7 @@ Send `hello` exactly once per connection, as the first message. The host closes 
 | `resolveShowdown` | `winners`: one list of player IDs per pot, in the same order as `state.pots`; each list non-empty, no duplicates, only IDs from `eligible`. With `config.digitalCards` the host pays out by itself; the command is only needed after an `undo` returned the game to `showdown`. | dealer of the hand or host |
 | `startNextHand` | – | dealer of the hand or host |
 | `pauseClock`, `resumeClock` | – | host |
-| `undo` | – (in a digital game the first undo after a showdown returns to `showdown`, before the payout) | host |
+| `undo` | – (steps back within the current hand, and from there one step into the previous hand (its payout); earlier steps are gone. In a digital game the first undo after a showdown returns to `showdown`, before the payout) | host |
 
 Actions (`action`): `fold`, `check`, `call`, `raiseTo` with `amount` (total bet in this betting round; a bet if nobody has bet yet), `allIn`.
 

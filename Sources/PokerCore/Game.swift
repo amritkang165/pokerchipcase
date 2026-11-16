@@ -7,7 +7,9 @@ public let maxSeats = 10
 public struct Game: Codable, Equatable, Sendable {
     /// The current table state.
     public internal(set) var state: GameState
-    /// Earlier states, oldest first; `undo` pops the last one.
+    /// Earlier states of the current hand, oldest first; a new hand keeps only the previous hand's last step
+    /// and the steps of the command that started it.
+    /// `undo` pops the last one.
     public internal(set) var history: [GameState] = []
 
     /// Starts a lobby with only the host seated at `config.startingStack`.
@@ -52,7 +54,9 @@ public struct Game: Codable, Equatable, Sendable {
                 steps.append(next)
                 try next.resolveShowdown(next.showdownWinners())
             }
-            history += steps
+            // The host save holds the history, so it must not grow over a tournament (#109). The previous
+            // hand's last step stays, so undoing the deal can still take back that hand's payout.
+            history = (next.handNumber > state.handNumber ? Array(history.suffix(1)) : history) + steps
             state = next
         }
         state.version = version

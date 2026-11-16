@@ -77,6 +77,11 @@ private let rags = "3s 8d Jc 4h 9s"
     #expect(g.state.seat("A")?.holeCards.count == 2 && g.state.seat("C")?.holeCards.count == 2)
 }
 
+@Test func newHandPaidOutAtOnceKeepsTheShowdownStep() throws {     // Review Focus 1
+    let g = try Game.started(["A": 10, "B": 1000], digital: true)
+    #expect(g.history.count == 3 && g.history.last?.phase == .showdown)
+}
+
 @Test func allInFromTheBlindsIsPaidInsideTheStartCommand() throws {     // Review Focus 1
     var g = try Game.started(["A": 10, "B": 1000], digital: true)
     #expect(g.state.phase == .handComplete || g.state.phase == .finished)
