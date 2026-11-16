@@ -64,6 +64,8 @@ private let rags = "3s 8d Jc 4h 9s"
     #expect(g.state.phase == .finished && g.state.seat("A")?.stack == 2000)
     try g.apply(.undo, by: "A", at: t0)
     #expect(g.state.phase == .showdown)
+    try g.apply(.resolveShowdown(winners: [["B"]]), by: "A", at: t0)
+    #expect(g.state.phase == .finished && g.state.seat("B")?.stack == 2000)
 }
 
 @Test func bustedSeatHoldsNoCardsInLaterHands() throws {              // Review Focus 3
