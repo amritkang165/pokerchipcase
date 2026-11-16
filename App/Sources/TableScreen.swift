@@ -5,6 +5,7 @@ import SwiftUI
 
 struct TableScreen: View {
     let session: TableSession
+    let nearby: NearbyTables
     let onLeave: () -> Void
     @State private var confirmLeave = false
     @State private var hostPending: HostConfirm?
@@ -14,8 +15,9 @@ struct TableScreen: View {
     @State private var slowSend = false
     @Environment(\.theme) private var theme
 
-    init(session: TableSession, onLeave: @escaping () -> Void) {
+    init(session: TableSession, nearby: NearbyTables, onLeave: @escaping () -> Void) {
         self.session = session
+        self.nearby = nearby
         self.onLeave = onLeave
     }
 
@@ -31,7 +33,7 @@ struct TableScreen: View {
             Group {
                 if let state = session.state {
                     if state.phase == .lobby {
-                        LobbyView(session: session, state: state)
+                        LobbyView(session: session, state: state, nearby: nearby)
                     } else if state.phase == .finished {
                         RankingView(state: state, onLeave: leave)
                     } else {
