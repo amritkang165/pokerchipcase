@@ -1,5 +1,4 @@
 import Foundation
-import Network
 import PokerCore
 import Testing
 @testable import PokerNet
