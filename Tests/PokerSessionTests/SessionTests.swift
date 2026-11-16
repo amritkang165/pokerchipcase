@@ -224,14 +224,31 @@ struct SessionTests {
 
     @Test func guestLeavingWhileDisconnectedStillLeaves() async throws {
         let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
         let tickets: SaveFile<SeatTicket> = tempFile()
         let ben = await guestSession(anna, ticketFile: tickets)
         try await eventually { ben.state?.seats.count == 2 && tickets.load() != nil }
         await anna.tableHost!.stop()
         try await eventually { ben.connection == .reconnecting }
-        #expect(await ben.leave())
+        // At once, not via the 2 s fallback for a silent host.
+        var left = false
+        let took = await ContinuousClock().measure { left = await ben.leave() }
+        #expect(left && took < .seconds(1))
         #expect(tickets.load() == nil)
-        await anna.leave()
+    }
+
+    /// A host that welcomes but never answers: the leave gives up after about 2 s, not the 10 s ack timeout.
+    @Test func guestLeavingASilentHostGivesUpSoon() async throws {
+        var game = Game(hostID: "A", hostName: "Anna", config: .relaxed)
+        try game.apply(.join(player: "B", name: "Ben"), by: "A", at: Date())
+        let (listener, port) = try await startSilentHost(state: game.state, welcome: Welcome(player: "B", token: "t"))
+        defer { listener.cancel() }
+        let ben = await TableSession.join(endpoint: .hostPort(host: "127.0.0.1", port: port), tableName: "Test",
+                                          code: code4711, name: "Ben", ticketFile: tempFile(), saveFile: tempFile())
+        try await eventually { ben.state?.phase == .lobby && ben.me == "B" }
+        var left = false
+        let took = await ContinuousClock().measure { left = await ben.leave() }
+        #expect(left && took >= .seconds(1.5) && took < .seconds(5))
     }
 
     @Test func guestIsToldWhenTheHostEndsTheTable() async throws {

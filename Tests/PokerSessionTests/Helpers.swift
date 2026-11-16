@@ -1,6 +1,6 @@
 import Foundation
 import Network
-import PokerNet
+@testable import PokerNet
 import Testing
 @testable import PokerSession
 @testable import PokerCore
@@ -72,4 +72,26 @@ func eventually(timeout: Duration = .seconds(5), sourceLocation: SourceLocation 
                              saveFile: SaveFile<HostSnapshot> = tempFile()) async -> TableSession {
     await TableSession.join(endpoint: .hostPort(host: "127.0.0.1", port: host.port!), tableName: host.tableName,
                             code: code, name: name, token: token, ticketFile: ticketFile, saveFile: saveFile)
+}
+
+/// A PSK listener that answers every `hello` with `welcome` and `state`, then never sends anything again.
+func startSilentHost(state: GameState, welcome: Welcome) async throws -> (NWListener, NWEndpoint.Port) {
+    let listener = try NWListener(using: PSK.parameters(code: code4711), on: .any)
+    listener.newConnectionHandler = { connection in
+        let channel = MessageChannel(connection: connection)
+        Task {
+            do {
+                for try await event in channel.events {
+                    guard case let .message(data) = event, case .hello? = try? Wire.decodeClient(data).message
+                    else { continue }
+                    channel.send(try Wire.encode(ServerMessage.welcome(welcome), id: UUID()))
+                    channel.send(try Wire.encode(ServerMessage.state(state), id: UUID()))
+                }
+            } catch {
+                // The fake host just stops; the client sees the closed channel.
+            }
+        }
+        channel.start()
+    }
+    return (listener, try await listener.startAndWaitUntilReady(queue: .global()))
 }
