@@ -198,6 +198,7 @@ public enum ConnectionStatus: Equatable, Sendable {
     /// again retries).
     @discardableResult public func leave() async -> Bool {
         eventTask?.cancel()
+        eventTask = nil  // a queued stepDown must not create a successor after the user left
         saveTask?.cancel()
         if !isHost, state?.phase == .lobby, let me {
             // A silent host must not hold the leave back for the whole ackTimeout: disconnecting fails the send.
@@ -250,8 +251,11 @@ public enum ConnectionStatus: Equatable, Sendable {
         case let .welcome(welcome):
             me = welcome.player
             connection = .connected
-            record(.save) { try ticketFile?.save(SeatTicket(tableName: tableName, code: code, name: name, token: welcome.token)) }
-            if let retired = retiredSave {
+            let ticketSaved = record(.save) {
+                try ticketFile?.save(SeatTicket(tableName: tableName, code: code, name: name, token: welcome.token))
+            }
+            // Without the ticket the host save is the only way back to this table, so it stays.
+            if ticketSaved, let retired = retiredSave {
                 retiredSave = nil
                 record(.delete) { try retired.delete() }
             }

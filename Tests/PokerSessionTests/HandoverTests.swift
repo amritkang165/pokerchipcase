@@ -81,6 +81,32 @@ struct HandoverTests {
         await ben.disconnect()
     }
 
+    /// The seat ticket could not be written: the old host's save is then the only way back, so it stays.
+    @Test func oldHostKeepsItsSaveWhenTheSeatTicketCannotBeWritten() async throws {
+        let name = uniqueName()
+        let annaSave: SaveFile<HostSnapshot> = tempFile(), annaTicket: SaveFile<SeatTicket> = tempFile()
+        try FileManager.default.createDirectory(at: annaTicket.url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try setReadOnly(annaTicket, true)
+        defer { try? setReadOnly(annaTicket, false) }
+        let service = NWEndpoint.service(name: name, type: Wire.serviceType, domain: "local.", interface: nil)
+        let anna = try await TableSession.host(
+            .newTable(hostName: "Anna", tableName: name, code: code4711, config: .relaxed),
+            saveFile: annaSave, ticketFile: annaTicket)
+        let ben = await TableSession.join(endpoint: service, tableName: name, code: code4711, name: "Ben",
+                                          ticketFile: tempFile(), saveFile: tempFile())
+        try await eventually(timeout: .seconds(30)) { anna.state?.seats.count == 2 && ben.me != nil }
+        await anna.send(.startTournament(button: anna.me!))
+        try await eventually { anna.state?.phase == .betting }
+
+        await anna.send(.transferHost(to: ben.me!))
+        try await eventually(timeout: .seconds(30)) { anna.successor != nil && ben.successor != nil }
+        let newHost = ben.successor!, oldHost = anna.successor!
+        defer { Task { await oldHost.leave(); await newHost.leave() } }
+        try await eventually(timeout: .seconds(30)) { oldHost.connection == .connected }
+        #expect(oldHost.problem?.action == .save)
+        #expect(annaSave.load() != nil)
+    }
+
     @Test func failedTakeoverIsShownAndTheGuestStaysAGuest() async throws {
         let anna = try await hostUnique()
         defer { Task { await anna.successor?.leave() } }
