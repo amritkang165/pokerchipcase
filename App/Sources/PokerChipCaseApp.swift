@@ -14,6 +14,7 @@ struct PokerChipCaseApp: App {
         Appearance.migrate(in: .standard)
         #if DEBUG
         Appearance.checkMigration()
+        CardBackPattern.checkMonogram()
         #endif
     }
 
