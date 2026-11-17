@@ -291,7 +291,8 @@ public actor TableHost {
     }
 
     /// Players without a seat (removed in the lobby, or their join was undone) lose their connection.
-    /// Their token stays, but `welcome` only honors tokens of seated players.
+    /// Their token stays: in the lobby, `welcome` seats them again under the old ID.
+    // ponytail: tokens are never pruned; each tokenless join (also after a voluntary leave) adds about 80 bytes to every save and handover. Prune tokens whose player is neither seated nor in Game.history if saves grow noticeably (#128).
     private func kickUnseatedPlayers() {
         let seated = Set(snapshot.game.state.seats.map(\.id))
         for (id, player) in bound where !seated.contains(player) {
@@ -312,7 +313,9 @@ public actor TableHost {
             // device sharing the token, `replaced` stops it from taking the seat back.
             for (other, q) in bound where q == p && other != id { reject(.replaced, other, replyTo: nil) }
         } else {
-            player = UUID().uuidString
+            // A removed player rejoins under the old ID and token, so undoing the removal finds them again (#126).
+            let known = hello.token.flatMap { snapshot.tokens[$0] }
+            player = known ?? UUID().uuidString
             do {
                 try snapshot.game.apply(.join(player: player, name: Self.seatName(hello.name)), by: snapshot.game.state.hostID, at: Date())
             } catch .tableFull {
@@ -320,8 +323,12 @@ public actor TableHost {
             } catch {
                 return reject(.gameInProgress, id, replyTo: requestID)
             }
-            token = UUID().uuidString
-            snapshot.tokens[token] = player
+            if known != nil, let t = hello.token {
+                token = t
+            } else {
+                token = UUID().uuidString
+                snapshot.tokens[token] = player
+            }
             onChange(snapshot)
         }
         bound[id] = player

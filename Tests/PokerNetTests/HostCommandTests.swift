@@ -50,14 +50,52 @@ struct HostCommandTests {
         await t.host.stop()
     }
 
-    @Test func removedPlayerIsDisconnectedAndRejoinsAsNew() async throws {
+    @Test func removedPlayerRejoinsUnderTheOldID() async throws {
         let t = try await Table.open()
         t.anna.send(t.command(.removePlayer(player: t.benWelcome.player)))
         #expect(try await t.ben.error() == WireErrorCode.removed.rawValue)
         try await t.ben.waitForClose()
         let again = try await RawClient.connect(t.port)
         again.send(hello("Ben", token: t.benWelcome.token))
-        #expect(try await again.welcome().player != t.benWelcome.player)
+        #expect(try await again.welcome() == t.benWelcome)
+        #expect(await t.host.snapshot.tokens.count == 2)
+        await t.host.stop()
+    }
+
+    @Test func undoAfterALobbyRejoinLeavesNoGhost() async throws {
+        let t = try await Table.open()
+        t.anna.send(t.command(.removePlayer(player: t.benWelcome.player)))
+        try await t.ben.waitForClose()
+        let again = try await RawClient.connect(t.port)
+        again.send(hello("Ben", token: t.benWelcome.token))
+        let ticket = try await again.welcome()  // the app overwrites its seat ticket with this
+        let rejoined = try await t.anna.state { $0.seats.count == 2 }
+        t.anna.send(t.command(.undo, version: rejoined.version))
+        #expect(try await again.error() == WireErrorCode.removed.rawValue)
+        let undone = try await t.anna.state { $0.version > rejoined.version }
+        t.anna.send(t.command(.undo, version: undone.version))
+        let restored = try await t.anna.state { $0.version > undone.version }
+        #expect(restored.seats.map(\.id) == [t.hostID, t.benWelcome.player])
+        let back = try await RawClient.connect(t.port)
+        back.send(hello("Ben", token: ticket.token))
+        #expect(try await back.welcome().player == t.benWelcome.player)
+        await t.host.stop()
+    }
+
+    @Test func seatlessTokenCannotJoinARunningGame() async throws {
+        let t = try await Table.open()
+        let cem = try await RawClient.connect(t.port)
+        cem.send(hello("Cem"))
+        _ = try await cem.welcome()
+        let three = try await t.anna.state { $0.seats.count == 3 }
+        t.anna.send(t.command(.removePlayer(player: t.benWelcome.player), version: three.version))
+        let two = try await t.anna.state { $0.seats.count == 2 }
+        t.anna.send(t.command(.startTournament(button: t.hostID), version: two.version))
+        _ = try await t.anna.state { $0.phase == .betting }
+        let again = try await RawClient.connect(t.port)
+        again.send(hello("Ben", token: t.benWelcome.token))
+        #expect(try await again.error() == WireErrorCode.gameInProgress.rawValue)
+        #expect(await t.host.snapshot.tokens.count == 3)
         await t.host.stop()
     }
 
