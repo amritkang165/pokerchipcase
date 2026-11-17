@@ -4,11 +4,11 @@ An iOS app that replaces the poker chip case at a Texas Hold'em night among frie
 
 <p>
   <img src="docs/images/lobby.png" width="16%" alt="Lobby with the table code the other players join with">
-  <img src="docs/images/table.png" width="16%" alt="Round table in the felt theme during a betting round">
+  <img src="docs/images/table.png" width="16%" alt="Round table in the Felt theme during a betting round">
   <img src="docs/images/showdown.png" width="16%" alt="Showdown with real cards: tap the winners on the table, then pay out">
   <img src="docs/images/payout.png" width="16%" alt="End of a hand with every player's win or loss">
   <img src="docs/images/cards.png" width="16%" alt="End of a hand with digital cards: the board, every hand and the winning hand">
-  <img src="docs/images/dark.png" width="16%" alt="The table in the dark theme with digital hole cards">
+  <img src="docs/images/neon.png" width="16%" alt="The table in the Neon theme, dark, with digital hole cards">
 </p>
 
 ## How a game night works
@@ -30,7 +30,7 @@ No account, no server, no internet. The phones talk directly over the local Wi-F
 - The host's table survives an app restart, and players get their seat back after a dropped connection
 - The host can hand the table over to another player's phone and leave
 - Optional digital cards: the app deals, each player sees only their own hole cards, and the showdown pays out by itself
-- Felt, Dark and System appearance, and a choice of card backs
+- Four themes (Felt, Neon, Rubin, Royal), each light or dark, and a choice of card backs
 
 ## Status
 

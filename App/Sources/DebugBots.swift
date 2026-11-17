@@ -29,7 +29,7 @@ import SwiftUI
     private static var bots: [(TableSession, Task<Void, Never>)] = []
 
     /// Launch argument `-debugTable`: create a table, fill it with bots and start, with no taps.
-    /// Combine with `-playerName Du` and `-appearance felt|dark`.
+    /// Combine with `-playerName Du`, `-theme felt|neon|ruby|royal` and `-appearance light|dark|system`.
     static let auto = ProcessInfo.processInfo.arguments.contains("-debugTable")
 
     /// Launch argument `-debugStop lobby|turn|showdown|payout`, with `-debugTable`: where the host stops

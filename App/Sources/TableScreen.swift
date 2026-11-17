@@ -91,17 +91,18 @@ struct TableScreen: View {
     }
 
     /// Nothing at all when there is no message, so no empty bar shows above the table.
+    /// On the seat fill: the room is too light for red text in the light palettes.
     @ViewBuilder private var banner: some View {
         if let text = bannerText {
-            text.frame(maxWidth: .infinity).padding(6).background(theme.background)
+            text.foregroundStyle(theme.seatText).frame(maxWidth: .infinity).padding(6).background(theme.seat)
         }
     }
 
     private var bannerText: Text? {
         if session.connection == .reconnecting { return Text("Reconnecting…") }
         if session.isSending, slowSend { return Text("Sending…") }
-        if let rejection = session.rejection { return Text(rejection.message).foregroundStyle(.red) }
-        if let problem = session.problem { return Text(problem.text).foregroundStyle(.red) }
+        if let rejection = session.rejection { return Text(rejection.message).foregroundStyle(theme.red) }
+        if let problem = session.problem { return Text(problem.text).foregroundStyle(theme.red) }
         return nil
     }
 

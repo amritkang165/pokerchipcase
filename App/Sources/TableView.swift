@@ -22,11 +22,16 @@ struct TableView: View {
         state.config.levels.indices.contains(state.clock.levelIndex + 1) ? state.config.levels[state.clock.levelIndex + 1] : nil
     }
 
+    /// The dealer's hint, shown only to the dealer.
+    private var bannerHint: DealerHint? { session.me == state.dealerID ? state.dealerHint : nil }
+    private var showsBanner: Bool { bannerHint != nil }
+
     var body: some View {
         VStack(spacing: 10) {
             header
-            if session.me == state.dealerID, let hint = state.dealerHint {
-                Text(hint.message).font(.headline).frame(maxWidth: .infinity).padding(8)
+            if let hint = bannerHint {
+                // One compact line: the rest of the screen is tallest with this banner on an iPhone SE.
+                Text(hint.message).font(.subheadline.bold()).frame(maxWidth: .infinity).padding(4)
                     .background(theme.accent.opacity(0.25), in: .rect(cornerRadius: 8))
                     .padding(.horizontal)
             }
@@ -38,9 +43,16 @@ struct TableView: View {
                     HoleCardsView(cards: mySeat.holeCards, faceUp: state.isRevealed(mySeat), width: 50)
                 }
                 VStack(spacing: 0) {
-                    Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
-                    Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
-                        .contentTransition(.numericText()).animation(.default, value: myStack)
+                    // With the dealer banner the label shares a line with the number: the rest of the screen
+                    // is tallest then and must still fit on an iPhone SE.
+                    // One layout that switches, so the number keeps its identity and its transition.
+                    let layout = showsBanner
+                        ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8)) : AnyLayout(VStackLayout(spacing: 0))
+                    layout {
+                        Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
+                        Text("\(myStack)").font(.system(size: showsBanner ? 28 : 40, weight: .bold, design: .rounded)).monospacedDigit()
+                            .contentTransition(.numericText()).animation(.default, value: myStack)
+                    }
                     if let legal = session.legalActions, legal.callAmount > 0 {
                         Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
                     }
@@ -52,12 +64,10 @@ struct TableView: View {
         }
         // No side padding for the table: the seat labels use the full width.
         .foregroundStyle(theme.text)
-        .background(theme.background.ignoresSafeArea())
-        .tint(theme.accent)
-        // The table is dark in both themes, so the bar and status bar need light content.
+        .background { RoomBackground() }
+        .tint(theme.formTint)
         .toolbarBackground(theme.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .sensoryFeedback(.success, trigger: iWon) { _, won in won }
         .onChange(of: state.pots, initial: true) { resetPicks() }
         .onChange(of: state.handNumber) { resetPicks() }
@@ -92,7 +102,7 @@ struct TableView: View {
         VStack(spacing: 2) {
             let level = state.currentLevel
             Text("Level \(state.clock.levelIndex + 1) · \(level.smallBlind)/\(level.bigBlind)").font(.headline)
-                .foregroundStyle(theme.accent)
+                .foregroundStyle(theme.formTint)
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 if state.clock.isPaused {
                     Text("Paused")

@@ -120,7 +120,7 @@ struct CardSlotView: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: width * 0.12)
-            .strokeBorder(theme.cardFrame.opacity(0.25), lineWidth: max(1, width * 0.03))
+            .strokeBorder(theme.onTable.opacity(0.25), lineWidth: max(1, width * 0.03))
             .modifier(CardShape(width: width))
             .accessibilityHidden(true)
     }
@@ -182,7 +182,7 @@ struct HoleCardsView: View {
 #Preview {
     let cards = [Card("Ah")!, Card("Ts")!]
     VStack(spacing: 0) {
-        ForEach([("Felt", Theme.felt), ("Dark", Theme.dark)], id: \.0) { _, theme in
+        ForEach([("Felt light", ThemeName.felt.palette(for: .light)), ("Neon dark", ThemeName.neon.palette(for: .dark))], id: \.0) { _, theme in
             VStack(spacing: 12) {
                 HStack {
                     CardFaceView(card: cards[0], width: 48)
