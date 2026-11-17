@@ -155,41 +155,6 @@ struct CardFaceView: View {
     }
 }
 
-struct CardBackView: View {
-    let back: CardBack
-    let width: CGFloat
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        let inset = width * 0.08
-        let line = max(0.5, width * 0.012)
-        let frame = theme.cardFrame
-        let inner = RoundedRectangle(cornerRadius: width * 0.08)
-        back.color
-            .overlay {
-                Canvas { context, size in
-                    // Two sets of diagonals at a fixed step form the diamond lattice.
-                    let step = max(2, width * 0.09)
-                    var path = Path()
-                    var x = -size.height
-                    while x < size.width {
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x + size.height, y: size.height))
-                        path.move(to: CGPoint(x: x, y: size.height))
-                        path.addLine(to: CGPoint(x: x + size.height, y: 0))
-                        x += step
-                    }
-                    context.stroke(path, with: .color(frame.opacity(0.35)), lineWidth: line)
-                }
-                .clipShape(inner)
-                .overlay(inner.strokeBorder(frame, lineWidth: line * 1.5))
-                .padding(inset)
-            }
-            .modifier(CardShape(width: width))
-            .accessibilityHidden(true)
-    }
-}
-
 /// Where a card will lie, e.g. a board card not dealt yet.
 struct CardSlotView: View {
     let width: CGFloat
