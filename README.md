@@ -30,7 +30,7 @@ No account, no server, no internet. The phones talk directly over the local Wi-F
 - The host's table survives an app restart, and players get their seat back after a dropped connection
 - The host can hand the table over to another player's phone and leave
 - Optional digital cards: the app deals, each player sees only their own hole cards, and the showdown pays out by itself
-- Four themes (Felt, Neon, Rubin, Royal), each light or dark, and a choice of card backs
+- Four themes (Felt, Neon, Rubin, Royal), each light or dark, and a choice of card faces and card backs
 
 ## Status
 
