@@ -18,7 +18,8 @@ xcrun simctl status_bar "$SIM" override --time 9:41 --batteryState charged --bat
 
 # shot <file> <-debugStop> <-theme> <-appearance> <-digitalCards> <seconds until the scene is reached>
 shot() {
-    file=$OUT/$1.png
+    name=$1
+    file=$OUT/$name.png
     stop=$2
     theme=$3
     appearance=$4
@@ -28,10 +29,10 @@ shot() {
     xcrun simctl launch "$SIM" "$APP_ID" -debugTable -playerName Alex -debugStop "$stop" -theme "$theme" \
         -appearance "$appearance" -digitalCards "$digital" >/dev/null
     sleep "$seconds"
-    xcrun simctl io "$SIM" screenshot "$RAW/$1.png" >/dev/null 2>&1
+    xcrun simctl io "$SIM" screenshot "$RAW/$name.png" >/dev/null 2>&1
     # 600 points wide, 6 bits per channel: keeps each file under 500 KB. 256-color quantizing
     # banded the gradients and turned Neon's blue chip grey; posterizing does neither.
-    ffmpeg -loglevel error -y -i "$RAW/$1.png" -vf "scale=600:-1:flags=lanczos,format=rgb24,lutrgb=r='bitand(val,252)':g='bitand(val,252)':b='bitand(val,252)'" "$file"
+    ffmpeg -loglevel error -y -i "$RAW/$name.png" -vf "scale=600:-1:flags=lanczos,format=rgb24,lutrgb=r='bitand(val,252)':g='bitand(val,252)':b='bitand(val,252)'" "$file"
     echo "$file"
 }
 
