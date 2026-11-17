@@ -41,6 +41,12 @@ struct SettingsView: View {
                     Picker("Back pattern", selection: $cardBackPattern) {
                         ForEach(CardBackPattern.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
+                } header: {
+                    Text("Cards").foregroundStyle(theme.muted)
+                }
+                .themedRow()
+
+                Section {
                     Picker("Back color", selection: $cardBack) {
                         ForEach(CardBack.allCases, id: \.self) { back in
                             Label { Text(back.label) } icon: { CardBackView(back: back, width: 22) }.tag(back)
@@ -49,7 +55,7 @@ struct SettingsView: View {
                     .pickerStyle(.inline)
                     .labelsHidden()
                 } header: {
-                    Text("Cards").foregroundStyle(theme.muted)
+                    Text("Back color").foregroundStyle(theme.muted)
                 }
                 .themedRow()
             }
