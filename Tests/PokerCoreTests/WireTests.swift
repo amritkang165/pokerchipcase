@@ -106,7 +106,9 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
         ["A": 1000, "B": 1000, "C": 1000, "D": 1000, "E": 1000, "F": 1000, "G": 1000, "H": 1000, "I": 1000, "J": 1000],
         digital: true)
     try g.checkDown()
-    g.history = Array(repeating: g.state, count: 50)
+    g.history = Array(repeating: g.state, count: 60)
+    g.keepHistory(last: 50)  // TableHost.handoverHistory
+    #expect(g.history.count == 50)
     let data = try Wire.encode(ServerMessage.handover(Handover(game: g, tokens: [:])), id: id1)
     #expect(data.count < 1_048_576)
 }
