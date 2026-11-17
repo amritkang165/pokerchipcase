@@ -19,8 +19,12 @@ private let classicChips = [Color(hex: 0xc0392b), Color(hex: 0x2c3e50), Color(he
 /// Royal swaps the navy chip for white: navy vanishes on the navy felt.
 private let royalChips = [Color(hex: 0xc0392b), Color(hex: 0xf2f4f7), Color(hex: 0x27ae60)]
 private let neonChips = [Color(hex: 0x38e1b0), Color(hex: 0x5b6cff), Color(hex: 0xff9f68)]
+/// Card face ground, suit inks (blue and green only for the four-color deck) and an optional face edge.
+private typealias CardInk = (face: Color, text: Color, red: Color, blue: Color, green: Color, edge: Color?)
+private let fourColorBlue = Color(hex: 0x1f5fbf)
+private let fourColorGreen = Color(hex: 0x1b7a40)
 /// Felt, Rubin and Royal share the cream card.
-private let cream = (face: Color(hex: 0xf6efdf), text: Color(hex: 0x16181d), red: Color(hex: 0xc0392b))
+private let cream: CardInk = (Color(hex: 0xf6efdf), Color(hex: 0x16181d), Color(hex: 0xc0392b), fourColorBlue, fourColorGreen, nil)
 
 private extension Rail {
     static let wood = Rail(
@@ -49,7 +53,7 @@ private extension Theme {
         seat: Color, seatBorder: Color, seatText: UInt32, text: UInt32, onTable: UInt32, onTableShadow: Bool = false,
         lightSeat: Bool = false, mutedOpacity: Double = 0.65,
         accent: Color, onAccent: Color, formTint: Color? = nil, fold: UInt32, onFold: UInt32 = 0xffffff,
-        chips: [Color] = classicChips, card: (face: Color, text: Color, red: Color) = cream
+        chips: [Color] = classicChips, card: CardInk = cream
     ) {
         let room = room.map { Color(hex: $0) }
         let text = Color(hex: text)
@@ -62,7 +66,8 @@ private extension Theme {
             muted: text.opacity(mutedOpacity),
             accent: accent, onAccent: onAccent, formTint: formTint ?? accent,
             fold: Color(hex: fold), onFold: Color(hex: onFold), chips: chips,
-            cardFrame: .white, cardFace: card.face, cardText: card.text, cardRed: card.red)
+            cardFrame: .white, cardFace: card.face, cardText: card.text, cardRed: card.red,
+            cardBlue: card.blue, cardGreen: card.green, cardEdge: card.edge)
     }
 
     static let feltLight = Theme(
@@ -85,7 +90,7 @@ private extension Theme {
         line: Color(hex: 0x12b88a).opacity(0.55), seat: Color.white.opacity(0.95), seatBorder: Color(hex: 0x1a2233).opacity(0.18),
         seatText: 0x1a2233, text: 0x1a2233, onTable: 0x1a2233, lightSeat: true, mutedOpacity: 0.85,
         accent: Color(hex: 0x12b88a), onAccent: Color(hex: 0x06110d), formTint: Color(hex: 0x1a2233), fold: 0xd5dbe6, onFold: 0x1a2233,
-        chips: neonChips, card: (Color.white, Color(hex: 0x16181d), Color(hex: 0xd63b3b)))
+        chips: neonChips, card: (Color.white, Color(hex: 0x16181d), Color(hex: 0xd63b3b), fourColorBlue, fourColorGreen, nil))
 
     static let neonDark = Theme(
         room: [0x141b29, 0x090c12, 0x020304], surface: [0x252c3c, 0x12151e, 0x090b10],
@@ -95,7 +100,8 @@ private extension Theme {
         line: Color(hex: 0x38e1b0).opacity(0.45), seat: Color(hex: 0x04060a).opacity(0.88), seatBorder: Color(hex: 0x38e1b0).opacity(0.25),
         seatText: 0xe8eaf0, text: 0xe8eaf0, onTable: 0xe8eaf0,
         accent: Color(hex: 0x38e1b0), onAccent: Color(hex: 0x06110d), fold: 0x2a2e3a,
-        chips: neonChips, card: (Color(hex: 0x232a3a), Color(hex: 0xf1f3f8), Color(hex: 0xff6b6b)))
+        chips: neonChips, card: (Color(hex: 0x232a3a), Color(hex: 0xf1f3f8), Color(hex: 0xff6b6b), Color(hex: 0x6aa5ff), Color(hex: 0x4cc47a),
+               Color(hex: 0x3a3f4d)))
 
     static let rubyLight = Theme(
         room: [0xdcc8ad, 0xbfa684, 0xa08764], surface: [0xee6f6a, 0xd04a4a, 0xb23638], rail: .leather, cushion: 0xb23638,

@@ -1,3 +1,4 @@
+import PokerCore
 import SwiftUI
 
 /// The per-device theme, stored as `@AppStorage("theme")`. Each theme has a light and a dark palette.
@@ -79,6 +80,13 @@ extension Appearance {
 }
 #endif
 
+/// The per-device card face, stored as `@AppStorage("cardFace")`.
+enum CardFace: String, CaseIterable {
+    case centered, classic, jumbo, solid
+
+    var label: String { rawValue.capitalized }
+}
+
 /// The per-device card back, stored as `@AppStorage("cardBack")`. Its color is the same in every theme.
 enum CardBack: String, CaseIterable {
     case red, blue, green, black, purple
@@ -147,14 +155,32 @@ struct Theme: Sendable {
     var onFold: Color
     /// Exactly three chip colors.
     var chips: [Color]
-    /// Inner frame and lattice of a card back, edge of a card face.
+    /// Inner frame of a card back.
     var cardFrame: Color
     /// Card face background.
     var cardFace: Color
     /// Rank and the black suits on a card face.
     var cardText: Color
-    /// Hearts and diamonds.
+    /// Hearts, and diamonds unless the four-color deck is on.
     var cardRed: Color
+    /// Diamonds in the four-color deck.
+    var cardBlue: Color
+    /// Clubs in the four-color deck.
+    var cardGreen: Color
+    /// Edge line of a card face where the drop shadow alone does not set it off; nil for none.
+    var cardEdge: Color?
+}
+
+extension Theme {
+    /// Ink of a suit on this theme's card face.
+    func suitColor(_ suit: Card.Suit, fourColor: Bool) -> Color {
+        switch suit {
+        case .spades: cardText
+        case .hearts: cardRed
+        case .diamonds: fourColor ? cardBlue : cardRed
+        case .clubs: fourColor ? cardGreen : cardText
+        }
+    }
 }
 
 extension EnvironmentValues {
