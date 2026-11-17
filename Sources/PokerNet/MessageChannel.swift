@@ -68,6 +68,16 @@ final class MessageChannel: @unchecked Sendable {
         }
     }
 
+    /// Closes once every message queued before it has been handed to the network stack.
+    func close() {
+        queue.async { [self] in
+            connection.send(
+                content: nil, contentContext: .finalMessage, isComplete: true,
+                completion: .contentProcessed { [connection] _ in connection.cancel() }
+            )
+        }
+    }
+
     func cancel() {
         queue.async { [self] in
             isCancelled = true
