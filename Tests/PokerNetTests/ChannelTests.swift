@@ -113,6 +113,21 @@ struct ChannelTests {
         _ = try await rec.first { $0 == .message(big) }
         channel.cancel()
     }
+
+    @Test func closeDeliversWhatWasQueuedBefore() async throws {
+        let (listener, port, channels) = try await startRecordingListener()
+        defer { listener.cancel() }
+        let sender = MessageChannel(to: loopback(port), code: code4711)
+        let rec = EventRecorder(sender.events)
+        sender.start()
+        _ = try await rec.first { $0 == .ready }
+        let big = Data(repeating: UInt8(ascii: "a"), count: MessageChannel.maxMessageSize)
+        sender.send(big)
+        sender.close()
+        var it = channels.makeAsyncIterator()
+        let receiver = try #require(await it.next())
+        _ = try await receiver.first { $0 == .message(big) }
+    }
 }
 
 /// How a TLS channel ends against a plain TCP peer that `abort`s each connection before the handshake completes.

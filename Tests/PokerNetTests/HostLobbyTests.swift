@@ -113,7 +113,8 @@ struct HostLobbyTests {
     }
 
     @Test func connectionWithoutHelloIsClosedAfterTimeout() async throws {
-        let (host, port) = try await startHost(helloTimeout: .milliseconds(300))
+        // Ben's TLS handshake and hello must fit in the timeout even when the full suite loads the CPU (#125).
+        let (host, port) = try await startHost(helloTimeout: .seconds(2))
         let ben = try await RawClient.connect(port)
         ben.send(hello("Ben"))
         let w = try await ben.welcome()
