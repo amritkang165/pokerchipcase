@@ -88,8 +88,15 @@ struct CardFaceView: View {
     /// Glyph sizes and insets as fractions of the card's width (`left`, `right`) and height (`top`, `bottom`),
     /// measured from the approved mockup. Negative insets let the big suit run off the card.
     private struct Metrics {
-        var rank: CGFloat, tracking: CGFloat, top: CGFloat, left: CGFloat, small: CGFloat?
-        var big: CGFloat, right: CGFloat, bottom: CGFloat, bigOpacity: Double = 1
+        var rank: CGFloat
+        var tracking: CGFloat
+        var top: CGFloat
+        var left: CGFloat
+        var small: CGFloat?
+        var big: CGFloat
+        var right: CGFloat
+        var bottom: CGFloat
+        var bigOpacity: Double = 1
     }
 
     @ViewBuilder private func layout(_ face: CardFace) -> some View {
