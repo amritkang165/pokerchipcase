@@ -146,8 +146,8 @@ public actor TableHost {
         disconnectAll()
     }
 
-    func disconnectAll() {
-        for channel in channels.values { channel.cancel() }
+    func disconnectAll(graceful: Bool = false) {
+        for channel in channels.values { if graceful { channel.close() } else { channel.cancel() } }
         channels = [:]
         bound = [:]
         lastHeard = [:]
@@ -281,7 +281,7 @@ public actor TableHost {
             channels[id]?.sendAndClose(data)
         }
         drop(id)
-        disconnectAll()
+        disconnectAll(graceful: true)
     }
 
     /// A player removed mid-game keeps the seat (folded, out) and the token, so an undo can give the seat back;
