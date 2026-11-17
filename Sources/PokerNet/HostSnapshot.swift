@@ -21,13 +21,13 @@ public struct HostSnapshot: Codable, Equatable, Sendable {
         self.code = code
     }
 
-    /// Starts a new lobby with a fresh host ID and token; the host is the only player seated.
+    /// Starts a new lobby with a fresh host ID and token; the host is the only player seated, with a name cut like a guest's.
     public static func newTable(
         hostName: String, tableName: String, code: TableCode = .random(), config: TournamentConfig
     ) -> HostSnapshot {
         let hostID = UUID().uuidString
         return HostSnapshot(
-            game: Game(hostID: hostID, hostName: hostName, config: config),
+            game: Game(hostID: hostID, hostName: TableHost.seatName(hostName), config: config),
             tokens: [UUID().uuidString: hostID],
             tableName: tableName,
             code: code
