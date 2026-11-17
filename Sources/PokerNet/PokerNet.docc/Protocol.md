@@ -51,7 +51,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":3}
 ```
 
-Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. The host trims `payload.name`, cuts it to 32 whole characters and at most 256 UTF-8 bytes, and uses `Player` if nothing is left. An unknown token counts as a new join. The token of a player who no longer has a seat (removed in the lobby) joins again under its old player ID and keeps the token, so an `undo` of the removal gives that seat back. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
+Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. The host trims `payload.name`, cuts it to 32 whole characters and at most 256 UTF-8 bytes, and uses `Player` if nothing is left. An unknown token counts as a new join. In the lobby, the token of a player who lost their seat (removed, or their join undone) joins again under its old player ID and keeps the token, so an `undo` of the removal gives that seat back; while a tournament runs it gets `gameInProgress`. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
 
 ### `command` – every game command
 
@@ -175,7 +175,7 @@ Sent to exactly one client: the player a `transferHost` named. `game.state` is t
 |---|---|---|
 | `versionMismatch` | `v` does not match | closed |
 | `tableFull` | already 10 players | closed |
-| `gameInProgress` | tournament running, new players can no longer join (reconnecting with a token still works) | closed |
+| `gameInProgress` | tournament running, new players can no longer join (reconnecting with the token of a seated player still works) | closed |
 | `helloRequired` | `command` before `hello` | stays open |
 | `malformed` | message could not be read, or a second `hello` | stays open |
 | `removed` | the player was removed from the table, in the lobby or mid-game (or their join was undone); the token stays valid: an `undo` by the host gives the seat back, and in the lobby the token can join again | closed |
