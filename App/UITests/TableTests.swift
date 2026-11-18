@@ -7,7 +7,7 @@ final class TableTests: XCTestCase {
     }
 
     func testHiddenHoleCardsReadAsHidden() {
-        let app = XCUIApplication.launched(debugTable: true, stop: "turn", digitalCards: true)
+        let app = XCUIApplication.launched(debugTable: true, stop: "turn", digitalCards: true, playerName: "Tester")
         app.waitForTableStop("turn")
         let cards = app.descendants(matching: .any)["holeCards"]
         XCTAssertTrue(cards.waitForExistence(timeout: 10), "hole cards not shown")
@@ -15,7 +15,7 @@ final class TableTests: XCTestCase {
     }
 
     func testChipCountsUseTheEnglishFormat() {
-        let app = XCUIApplication.launched(debugTable: true, stop: "turn")
+        let app = XCUIApplication.launched(debugTable: true, stop: "turn", playerName: "Tester")
         app.waitForTableStop("turn")
         let count = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "1,000")).firstMatch
         XCTAssertTrue(count.waitForExistence(timeout: 10), "no chip count reads 1,000")

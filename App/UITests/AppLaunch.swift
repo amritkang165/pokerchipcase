@@ -2,13 +2,17 @@ import XCTest
 
 extension XCUIApplication {
     /// Launches the app in English with the given debug launch arguments.
+    /// `theme` and `appearance` pin the look; sweeps never pass them, because a
+    /// launch argument wins over the Settings sheet.
     @discardableResult
     static func launched(
         debugTable: Bool = false,
         stop: String? = nil,
         digitalCards: Bool = false,
         fourColorDeck: Bool = false,
-        playerName: String? = nil
+        playerName: String? = nil,
+        theme: String? = nil,
+        appearance: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -17,6 +21,8 @@ extension XCUIApplication {
         if digitalCards { args += ["-digitalCards", "YES"] }
         if fourColorDeck { args += ["-fourColorDeck", "YES"] }
         if let playerName { args += ["-playerName", playerName] }
+        if let theme { args += ["-theme", theme] }
+        if let appearance { args += ["-appearance", appearance] }
         app.launchArguments = args
         app.launch()
         return app

@@ -10,18 +10,18 @@ final class SweepTests: XCTestCase {
     }
 
     func testStartScreenWithASavedGame() {
-        let table = XCUIApplication.launched(debugTable: true, stop: "lobby")
+        let table = XCUIApplication.launched(debugTable: true, stop: "lobby", playerName: "Tester")
         // The host save exists once the table screen is up.
         XCTAssertTrue(table.buttons["Table"].waitForExistence(timeout: 30), "table screen not shown")
         table.terminate()
-        let app = XCUIApplication.launched()
+        let app = XCUIApplication.launched(playerName: "Tester", theme: "felt", appearance: "light")
         XCTAssertTrue(app.buttons["resumeGame"].waitForExistence(timeout: 10), "saved game not offered")
         audit(app, screen: "start")
         app.attachScreenshot("start-saved-game")
     }
 
     func testStartScreenSweep() {
-        let app = XCUIApplication.launched()
+        let app = XCUIApplication.launched(playerName: "Tester")
         app.waitFor(app.buttons["Create table"], "isEnabled == %@", true, "start screen did not finish loading")
         // Discard every save an earlier test left (host game and seat ticket), so the sweep sees a clean start.
         let discards = app.buttons.matching(NSPredicate(format: "label == %@", "Discard"))
@@ -35,13 +35,13 @@ final class SweepTests: XCTestCase {
     }
 
     func testTurnTableSweep() {
-        let app = XCUIApplication.launched(debugTable: true, stop: "turn")
+        let app = XCUIApplication.launched(debugTable: true, stop: "turn", playerName: "Tester")
         app.waitForTableStop("turn")
         app.sweepThemes(screen: "table-turn", auditTypes: Self.tableAudit) { Self.openTableSettings(app) }
     }
 
     func testPayoutTableSweep() {
-        let app = XCUIApplication.launched(debugTable: true, stop: "payout", digitalCards: true, fourColorDeck: true)
+        let app = XCUIApplication.launched(debugTable: true, stop: "payout", digitalCards: true, fourColorDeck: true, playerName: "Tester")
         app.waitForTableStop("payout")
         app.sweepThemes(screen: "table-payout", auditTypes: Self.tableAudit) { Self.openTableSettings(app) }
     }

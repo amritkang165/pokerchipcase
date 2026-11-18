@@ -20,9 +20,12 @@ Run the first four from the repo root before opening a PR; CI runs the same four
 - UI tests (local only, not in CI; run before a PR that touches `App/`), after the app build's `xcodegen generate`:
 
   ```sh
+  rm -rf .build/uitests/UITests.xcresult
   xcrun simctl create "SE3 test" "iPhone SE (3rd generation)"  # once, if missing
   xcodebuild test -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'platform=iOS Simulator,name=SE3 test' -derivedDataPath .build/uitests -resultBundlePath .build/uitests/UITests.xcresult -quiet
   ```
+
+  Export the screenshots with `xcrun xcresulttool export attachments --path .build/uitests/UITests.xcresult --output-path .build/uitests/attachments`.
 
 ## Layout
 
