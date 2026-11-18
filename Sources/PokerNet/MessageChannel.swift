@@ -17,6 +17,7 @@ enum ChannelError: Error, Equatable {
 /// ponytail: @unchecked Sendable, `connection`, `buffer` and the flags are only touched on `queue`
 final class MessageChannel: @unchecked Sendable {
     static let maxMessageSize = 1_048_576
+    static let closeTimeout: Duration = .seconds(5)
     private static let newline = UInt8(ascii: "\n")
 
     let events: AsyncThrowingStream<ChannelEvent, Error>
@@ -58,23 +59,26 @@ final class MessageChannel: @unchecked Sendable {
         queue.async { [self] in connection.send(content: data + [Self.newline], completion: .idempotent) }
     }
 
-    /// Sends a last message, then closes the connection gracefully.
-    func sendAndClose(_ data: Data) {
-        queue.async { [self] in
-            connection.send(
-                content: data + [Self.newline], contentContext: .finalMessage, isComplete: true,
-                completion: .contentProcessed { [connection] _ in connection.cancel() }
-            )
-        }
+    /// Sends a last message, then closes the connection gracefully, or after `timeout` at the latest.
+    func sendAndClose(_ data: Data, timeout: Duration = MessageChannel.closeTimeout) {
+        finish(with: data + [Self.newline], timeout: timeout)
     }
 
-    /// Closes once every message queued before it has been handed to the network stack.
-    func close() {
+    /// Closes once every message queued before it has been handed to the network stack, or after `timeout`
+    /// at the latest.
+    func close(timeout: Duration = MessageChannel.closeTimeout) {
+        finish(with: nil, timeout: timeout)
+    }
+
+    /// A peer that stops reading or stalls the handshake never lets the final send complete (#136).
+    private func finish(with content: Data?, timeout: Duration) {
         queue.async { [self] in
+            let connection = connection  // the same one later, even if `run(_:)` replaces it
             connection.send(
-                content: nil, contentContext: .finalMessage, isComplete: true,
-                completion: .contentProcessed { [connection] _ in connection.cancel() }
+                content: content, contentContext: .finalMessage, isComplete: true,
+                completion: .contentProcessed { _ in connection.cancel() }
             )
+            queue.asyncAfter(deadline: .now() + timeout / .seconds(1)) { connection.cancel() }
         }
     }
 
