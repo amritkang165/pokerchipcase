@@ -54,8 +54,8 @@ enum KnownAuditIssues {
             return all.contains { $0.type == issue.auditType && $0.identifier == nil && $0.screen == screen }
         }
         // One snapshot reads the identifier in one query; issues often number in the dozens per screen.
-        // An element whose snapshot fails is not ignored.
-        guard let snapshot = try? element.snapshot() else { return false }
+        // A failed snapshot of an element that is gone (a nearby table from another parallel test that stopped) is ignored; any other failed snapshot is not.
+        guard let snapshot = try? element.snapshot() else { return !element.exists }
         return all.contains { $0.type == issue.auditType && $0.identifier == snapshot.identifier }
     }
 }

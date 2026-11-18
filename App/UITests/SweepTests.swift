@@ -1,10 +1,16 @@
 import XCTest
 
-@MainActor
-final class SweepTests: XCTestCase {
-    /// The table screens skip Dynamic Type and clipping until their fixed layout handles larger text (#153).
-    private static let tableAudit = XCUIAccessibilityAuditType.all.subtracting([.dynamicType, .textClipped])
+/// The table screens skip Dynamic Type and clipping until their fixed layout handles larger text (#153).
+private let tableAudit = XCUIAccessibilityAuditType.all.subtracting([.dynamicType, .textClipped])
 
+private func openTableSettings(_ app: XCUIApplication) {
+    app.buttons["Table"].tap()
+    app.buttons["Settings"].tap()
+}
+
+// Separate classes so Xcode runs them in parallel on simulator clones.
+@MainActor
+final class StartScreenTests: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
     }
@@ -34,20 +40,31 @@ final class SweepTests: XCTestCase {
         app.sweepThemes(screen: "start", auditsSettings: true) { app.navigationBars.buttons["Settings"].tap() }
     }
 
+}
+
+@MainActor
+final class TurnTableSweepTests: XCTestCase {
+    override func setUp() async throws {
+        continueAfterFailure = false
+    }
+
     func testTurnTableSweep() {
         let app = XCUIApplication.launched(debugTable: true, stop: "turn", playerName: "Tester")
         app.waitForTableStop("turn")
-        app.sweepThemes(screen: "table-turn", auditTypes: Self.tableAudit) { Self.openTableSettings(app) }
+        app.sweepThemes(screen: "table-turn", auditTypes: tableAudit) { openTableSettings(app) }
+    }
+
+}
+
+@MainActor
+final class PayoutTableSweepTests: XCTestCase {
+    override func setUp() async throws {
+        continueAfterFailure = false
     }
 
     func testPayoutTableSweep() {
         let app = XCUIApplication.launched(debugTable: true, stop: "payout", digitalCards: true, fourColorDeck: true, playerName: "Tester")
         app.waitForTableStop("payout")
-        app.sweepThemes(screen: "table-payout", auditTypes: Self.tableAudit) { Self.openTableSettings(app) }
-    }
-
-    private static func openTableSettings(_ app: XCUIApplication) {
-        app.buttons["Table"].tap()
-        app.buttons["Settings"].tap()
+        app.sweepThemes(screen: "table-payout", auditTypes: tableAudit) { openTableSettings(app) }
     }
 }
