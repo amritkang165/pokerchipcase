@@ -29,7 +29,7 @@ enum KnownAuditIssues {
         KnownAuditIssue(type: .dynamicType, identifier: "discardGame", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyHeader", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyTable", issue: 147),
-        // No run has shown it yet; it covers runs without nearby tables, where it replaces the rows.
+        // Shown instead of the rows when no table is nearby; a run without nearby tables fails without it.
         KnownAuditIssue(type: .dynamicType, identifier: "nearbySearching", issue: 147),
         // Table screens (contrast only, see SweepTests.tableAudit).
         KnownAuditIssue(type: .contrast, identifier: "seatName", issue: 148),
