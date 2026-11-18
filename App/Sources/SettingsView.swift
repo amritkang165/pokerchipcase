@@ -37,9 +37,11 @@ struct SettingsView: View {
                     Picker("Card face", selection: $cardFace) {
                         ForEach(CardFace.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
-                    Toggle("Four-color deck", isOn: $fourColorDeck)
-                    Picker("Back pattern", selection: $cardBackPattern) {
+                    Toggle(isOn: $fourColorDeck) { Text("Four-color deck").accessibilityIdentifier("fourColorDeck") }
+                    Picker(selection: $cardBackPattern) {
                         ForEach(CardBackPattern.allCases, id: \.self) { Text($0.label).tag($0) }
+                    } label: {
+                        Text("Back pattern").accessibilityIdentifier("backPattern")
                     }
                 } header: {
                     Text("Cards").foregroundStyle(theme.muted)
@@ -55,13 +57,13 @@ struct SettingsView: View {
                     .pickerStyle(.inline)
                     .labelsHidden()
                 } header: {
-                    Text("Back color").foregroundStyle(theme.muted)
+                    Text("Back color").foregroundStyle(theme.muted).accessibilityIdentifier("backColorHeader")
                 }
                 .themedRow()
             }
             .navigationTitle("Settings")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settingsDone") }
             }
             .themedScreen()
         }

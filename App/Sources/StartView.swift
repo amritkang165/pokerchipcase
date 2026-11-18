@@ -47,11 +47,12 @@ struct StartView: View {
                                 Text(savedGame.tableName).font(.caption).foregroundStyle(theme.muted)
                             }
                         }
-                        Button("Discard", role: .destructive) { discard(SaveFile.host) }
+                        .accessibilityIdentifier("resumeGame")
+                        Button("Discard", role: .destructive) { discard(SaveFile.host) }.accessibilityIdentifier("discardGame")
                     }
                     if let ticket {
-                        Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }
-                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }
+                        Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }.accessibilityIdentifier("rejoinSeat")
+                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }.accessibilityIdentifier("discardSeat")
                     }
                     Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
@@ -60,12 +61,14 @@ struct StartView: View {
                 if busy || !loaded { ProgressView().frame(maxWidth: .infinity).themedRow() }
                 Section {
                     if nearby.localNetworkDenied { LocalNetworkNotice() }
-                    if nearby.tables.isEmpty { Text("Looking for tables…").foregroundStyle(theme.muted) }
+                    if nearby.tables.isEmpty {
+                        Text("Looking for tables…").foregroundStyle(theme.muted).accessibilityIdentifier("nearbySearching")
+                    }
                     ForEach(nearby.tables, id: \.self) { table in
-                        Button(table.name) { joining = table }.disabled(name.isEmpty || busy)
+                        Button(table.name) { joining = table }.disabled(name.isEmpty || busy).accessibilityIdentifier("nearbyTable")
                     }
                 } header: {
-                    Text("Nearby tables").foregroundStyle(theme.muted)
+                    Text("Nearby tables").foregroundStyle(theme.muted).accessibilityIdentifier("nearbyHeader")
                 }
                 .themedRow()
             }

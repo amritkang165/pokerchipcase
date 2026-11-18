@@ -142,6 +142,7 @@ struct CardFaceView: View {
     private func glyph(_ text: String, size: CGFloat, tracking: CGFloat = 0) -> some View {
         Text(text).font(.system(size: size, weight: .bold, design: .rounded)).tracking(size * tracking)
             .lineLimit(1).minimumScaleFactor(0.5)
+            .accessibilityIdentifier("cardGlyph")
     }
 
     /// The `solid` face's ground: fixed per suit in every theme. Without the four-color deck, diamonds take
