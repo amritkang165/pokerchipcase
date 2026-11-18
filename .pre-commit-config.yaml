@@ -21,7 +21,7 @@ repos:
       - id: markdownlint-cli2
   - repo: https://github.com/crate-ci/typos
     # a tag: Dependabot matched the frozen comment against the tags of its other crates
-    rev: v1.52.0
+    rev: v1.52.2
     hooks:
       - id: typos
   - repo: https://github.com/rhysd/actionlint
