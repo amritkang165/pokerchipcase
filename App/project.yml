@@ -33,8 +33,22 @@ targets:
     dependencies:
       - package: PokerChipCase
         products: [PokerCore, PokerNet, PokerSession]
+  PokerChipCaseUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: PokerChipCase
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   PokerChipCase:
     build:
       targets:
         PokerChipCase: all
+    test:
+      targets:
+        - name: PokerChipCaseUITests
+          parallelizable: true

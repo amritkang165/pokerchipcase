@@ -49,12 +49,12 @@ struct TableView: View {
                     let layout = showsBanner
                         ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8)) : AnyLayout(VStackLayout(spacing: 0))
                     layout {
-                        Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
+                        Text("Your stack").font(.subheadline).foregroundStyle(theme.muted).accessibilityIdentifier("stackLabel")
                         Text("\(myStack)").font(.system(size: showsBanner ? 28 : 40, weight: .bold, design: .rounded)).monospacedDigit()
                             .contentTransition(.numericText()).animation(.default, value: myStack)
                     }
                     if let legal = session.legalActions, legal.callAmount > 0 {
-                        Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
+                        Text("To call \(legal.callAmount)").foregroundStyle(theme.muted).accessibilityIdentifier("toCall")
                     }
                 }
             }
@@ -114,6 +114,7 @@ struct TableView: View {
             }
             if let next = nextLevel {
                 Text("Next: \(next.smallBlind)/\(next.bigBlind)").font(.caption).foregroundStyle(theme.muted)
+                    .accessibilityIdentifier("nextLevel")
             }
         }
     }
