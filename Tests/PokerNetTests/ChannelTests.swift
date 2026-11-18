@@ -128,6 +128,37 @@ struct ChannelTests {
         let receiver = try #require(await it.next())
         _ = try await receiver.first { $0 == .message(big) }
     }
+
+    @Test func closeEndsAgainstAPeerThatStopsReading() async throws {
+        // PSK listener that starts each connection but never reads, so the sender's buffers fill up.
+        let listener = try NWListener(using: PSK.parameters(code: code4711), on: .any)
+        defer { listener.cancel() }
+        listener.newConnectionHandler = { $0.start(queue: .global()) }
+        let port = try await listener.startAndWaitUntilReady(queue: .global())
+        let sender = MessageChannel(to: loopback(port), code: code4711)
+        let rec = EventRecorder(sender.events)
+        sender.start()
+        _ = try await rec.first { $0 == .ready }
+        let big = Data(repeating: UInt8(ascii: "a"), count: MessageChannel.maxMessageSize)
+        for _ in 0..<64 { sender.send(big) }
+        sender.close(timeout: .milliseconds(500))
+        // The deadline's cancel ends the stream through the pending receive (ECANCELED), as any local cancel does,
+        // so only the end is checked.
+        _ = try await rec.waitForEnd(timeout: .seconds(5))
+    }
+
+    @Test func closeEndsWhileTheHandshakeStalls() async throws {
+        // Plain TCP peer that accepts and never answers the TLS ClientHello.
+        let listener = try NWListener(using: .tcp, on: .any)
+        defer { listener.cancel() }
+        listener.newConnectionHandler = { $0.start(queue: .global()) }
+        let port = try await listener.startAndWaitUntilReady(queue: .global())
+        let sender = MessageChannel(to: loopback(port), code: code4711)
+        let rec = EventRecorder(sender.events)
+        sender.start()
+        sender.close(timeout: .milliseconds(500))
+        _ = try await rec.waitForEnd(timeout: .seconds(5))
+    }
 }
 
 /// How a TLS channel ends against a plain TCP peer that `abort`s each connection before the handshake completes.
