@@ -2,6 +2,10 @@ import XCTest
 
 @MainActor
 final class TableTests: XCTestCase {
+    override func setUp() async throws {
+        continueAfterFailure = false
+    }
+
     func testHiddenHoleCardsReadAsHidden() {
         let app = XCUIApplication.launched(debugTable: true, stop: "turn", digitalCards: true)
         app.waitForTableStop("turn")

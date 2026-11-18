@@ -54,7 +54,7 @@ The owner picked approach 1.
 
 ### Checks
 
-- **Theme sweep.** In one launch per screen, the test opens the Settings sheet, picks each of the 4 themes × Light and Dark, closes the sheet, runs `performAccessibilityAudit()` and attaches a screenshot. The sheet itself is audited and photographed in each combination along the way. Screens:
+- **Theme sweep.** In one launch per screen, the test opens the Settings sheet, picks each of the 4 themes × Light and Dark, closes the sheet, runs `performAccessibilityAudit()` and attaches a screenshot. The start-screen sweep also audits and photographs the sheet in each combination; the table sweeps only use it to switch. Screens:
   - the start screen, clean (see "Clean state");
   - the debug table with physical cards, stopped at a turn (the default mode);
   - the debug table with digital cards and the four-color deck, stopped at the paid-out showdown (seat labels with `CardsText`, the ranking).
