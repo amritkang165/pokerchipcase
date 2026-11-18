@@ -23,6 +23,22 @@ extension XCUIApplication {
     }
 }
 
+extension XCUIApplication {
+    /// Waits until the debug table rests at `stop`: `turn` is the host's own turn
+    /// (enabled Fold button), `payout` is a digital game after its first paid-out
+    /// showdown (Next hand button). Fails the test when `timeout` passes first.
+    func waitForTableStop(_ stop: String, timeout: TimeInterval = 120) {
+        let button = switch stop {
+        case "turn": buttons["Fold"]
+        case "payout": buttons["Next hand"]
+        default: preconditionFailure("unknown table stop \(stop)")
+        }
+        let reached = NSPredicate(format: "exists == true AND isEnabled == true")
+        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: reached, object: button)], timeout: timeout)
+        XCTAssertEqual(result, .completed, "table did not reach stop \(stop)")
+    }
+}
+
 extension XCUIElement {
     /// Deletes the current text value, if any. Taps the trailing edge first so
     /// the caret sits at the end, where delete keys remove text.

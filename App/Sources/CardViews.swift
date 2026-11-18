@@ -223,6 +223,7 @@ struct HoleCardsView: View {
         .gesture(DragGesture(minimumDistance: 0).updating($pressed) { _, state, _ in state = true })
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(shown ? cards.spokenNames : "Your cards, hidden")
+        .accessibilityIdentifier("holeCards")
         .accessibilityActions {
             if !faceUp {
                 Button(revealed ? "Hide cards" : "Show cards") {
