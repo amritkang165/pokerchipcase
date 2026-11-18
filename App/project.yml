@@ -49,4 +49,6 @@ schemes:
       targets:
         PokerChipCase: all
     test:
-      targets: [PokerChipCaseUITests]
+      targets:
+        - name: PokerChipCaseUITests
+          parallelizable: true
