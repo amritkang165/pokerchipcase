@@ -204,7 +204,9 @@ public enum ConnectionStatus: Equatable, Sendable {
         eventTask?.cancel()
         eventTask = nil  // a queued stepDown must not create a successor after the user left
         saveTask?.cancel()
-        let leftLobby = !isHost && state?.phase == .lobby && me != nil
+        // A failed client sends nothing, and its ticket follows the failure (kept only after `removed`).
+        let failed = if case .failed = connection { true } else { false }
+        let leftLobby = !isHost && state?.phase == .lobby && me != nil && !failed
         if leftLobby, let me {
             // A silent host must not hold the leave back for the whole ackTimeout: disconnecting fails the send.
             let giveUp = Task { [client] in

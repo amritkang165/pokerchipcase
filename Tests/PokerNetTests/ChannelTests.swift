@@ -142,7 +142,8 @@ struct ChannelTests {
         let big = Data(repeating: UInt8(ascii: "a"), count: MessageChannel.maxMessageSize)
         for _ in 0..<64 { sender.send(big) }
         sender.close(timeout: .milliseconds(500))
-        // The hard cancel ends the stream through the pending receive (ECANCELED), so only the end is checked.
+        // The deadline's cancel ends the stream through the pending receive (ECANCELED), as any local cancel does,
+        // so only the end is checked.
         _ = try await rec.waitForEnd(timeout: .seconds(5))
     }
 
