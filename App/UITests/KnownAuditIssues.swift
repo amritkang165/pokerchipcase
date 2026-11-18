@@ -50,12 +50,15 @@ enum KnownAuditIssues {
     /// True when `issue`, found on `screen`, is a known finding, so the audit does not fail on it.
     @MainActor
     static func ignores(_ issue: XCUIAccessibilityAuditIssue, on screen: String) -> Bool {
-        guard let element = issue.element else {
-            return all.contains { $0.type == issue.auditType && $0.identifier == nil && $0.screen == screen }
+        let elementless = {
+            all.contains { $0.type == issue.auditType && $0.identifier == nil && $0.screen == screen }
         }
+        guard let element = issue.element else { return elementless() }
         // One snapshot reads the identifier in one query; issues often number in the dozens per screen.
         // A failed snapshot of an element that is gone (a nearby table from another parallel test that stopped) is ignored; any other failed snapshot is not.
         guard let snapshot = try? element.snapshot() else { return !element.exists }
+        // An element without an identifier counts as elementless: the audit resolves some elements only under load (parallel runs).
+        if snapshot.identifier.isEmpty { return elementless() }
         return all.contains { $0.type == issue.auditType && $0.identifier == snapshot.identifier }
     }
 }
