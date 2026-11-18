@@ -3,6 +3,7 @@ import XCTest
 /// The table screens skip Dynamic Type and clipping until their fixed layout handles larger text (#153).
 private let tableAudit = XCUIAccessibilityAuditType.all.subtracting([.dynamicType, .textClipped])
 
+@MainActor
 private func openTableSettings(_ app: XCUIApplication) {
     app.buttons["Table"].tap()
     app.buttons["Settings"].tap()
@@ -39,7 +40,6 @@ final class StartScreenTests: XCTestCase {
         XCTAssertFalse(app.buttons["resumeGame"].exists, "saved game still offered")
         app.sweepThemes(screen: "start", auditsSettings: true) { app.navigationBars.buttons["Settings"].tap() }
     }
-
 }
 
 @MainActor
@@ -53,7 +53,6 @@ final class TurnTableSweepTests: XCTestCase {
         app.waitForTableStop("turn")
         app.sweepThemes(screen: "table-turn", auditTypes: tableAudit) { openTableSettings(app) }
     }
-
 }
 
 @MainActor
