@@ -192,6 +192,8 @@ struct SessionTests {
         let tickets: SaveFile<SeatTicket> = tempFile()
         let ben = await guestSession(anna, ticketFile: tickets)
         try await eventually { ben.connection == .connected && tickets.load() != nil }
+        await anna.send(.startTournament(button: anna.me!))
+        try await eventually { ben.state?.phase == .betting }
         await ben.leave()
         #expect(tickets.load() == nil)
         await anna.leave()
@@ -207,6 +209,44 @@ struct SessionTests {
         #expect(await ben.leave())
         #expect(ben.connection != .failed(.removed))
         try await eventually { anna.state?.seats.count == 1 }
+    }
+
+    @Test func guestLeavingTheLobbyKeepsTicketAndRejoinsAfterUndo() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let tickets: SaveFile<SeatTicket> = tempFile()
+        let ben = await guestSession(anna, ticketFile: tickets)
+        try await eventually { anna.state?.seats.count == 2 && ben.state?.seats.count == 2 }
+        let benID = try #require(ben.me)
+        #expect(await ben.leave())
+        let ticket = try #require(tickets.load())
+        try await eventually { anna.state?.seats.count == 1 }
+        await anna.send(.undo)
+        try await eventually { anna.state?.seats.count == 2 }
+        let back = await guestSession(anna, token: ticket.token, ticketFile: tickets)
+        defer { Task { await back.leave() } }
+        try await eventually { back.connection == .connected }
+        #expect(back.me == benID)
+        #expect(await anna.tableHost!.snapshot.tokens.count == 2)
+    }
+
+    @Test func lobbyTicketIsDeletedWhenTheGameAlreadyRuns() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let tickets: SaveFile<SeatTicket> = tempFile()
+        let ben = await guestSession(anna, ticketFile: tickets)
+        let cem = await guestSession(anna, name: "Cem")
+        defer { Task { await cem.leave() } }
+        try await eventually { anna.state?.seats.count == 3 && ben.state?.seats.count == 3 }
+        #expect(await ben.leave())
+        let ticket = try #require(tickets.load())
+        try await eventually { anna.state?.seats.count == 2 }
+        await anna.send(.startTournament(button: anna.me!))
+        try await eventually { anna.state?.phase == .betting }
+        let back = await guestSession(anna, token: ticket.token, ticketFile: tickets)
+        defer { Task { await back.leave() } }
+        try await eventually { back.connection == .failed(.gameInProgress) }
+        #expect(tickets.load() == nil)
     }
 
     @Test func removedGuestKeepsTicketAndRejoinsAfterUndo() async throws {
@@ -252,7 +292,7 @@ struct SessionTests {
         var left = false
         let took = await ContinuousClock().measure { left = await ben.leave() }
         #expect(left && took < .seconds(1))
-        #expect(tickets.load() == nil)
+        #expect(tickets.load() != nil)  // a lobby leave keeps the ticket; here the seat even stays on the host
     }
 
     /// A host that welcomes but never answers: the leave gives up after about 2 s, not the 10 s ack timeout.

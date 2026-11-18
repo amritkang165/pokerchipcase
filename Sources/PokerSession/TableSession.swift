@@ -197,13 +197,17 @@ public enum ConnectionStatus: Equatable, Sendable {
     }
 
     /// Disconnects; a guest in the lobby gives up their seat first, the host also ends the table for everyone.
-    /// Deletes this device's save file and seat ticket (the ticket stays after `removed`, for an undo by the host)
-    /// and returns false if that failed (`problem` says why; calling `leave()` again retries).
+    /// Deletes this device's save file and seat ticket (the ticket stays after `removed` and after leaving the lobby,
+    /// so the seat can be taken again after an undo by the host or a new join) and returns false if that failed
+    /// (`problem` says why; calling `leave()` again retries).
     @discardableResult public func leave() async -> Bool {
         eventTask?.cancel()
         eventTask = nil  // a queued stepDown must not create a successor after the user left
         saveTask?.cancel()
-        if !isHost, state?.phase == .lobby, let me {
+        // A failed client sends nothing, and its ticket follows the failure (kept only after `removed`).
+        let failed = if case .failed = connection { true } else { false }
+        let leftLobby = !isHost && state?.phase == .lobby && me != nil && !failed
+        if leftLobby, let me {
             // A silent host must not hold the leave back for the whole ackTimeout: disconnecting fails the send.
             let giveUp = Task { [client] in
                 try await Task.sleep(for: .seconds(2))
@@ -216,7 +220,7 @@ public enum ConnectionStatus: Equatable, Sendable {
         }
         await client.disconnect()
         await tableHost?.end()
-        let keepTicket = connection == .failed(.removed)
+        let keepTicket = leftLobby || connection == .failed(.removed)
         return record(.delete) {
             try saveFile?.delete()
             if !keepTicket { try ticketFile?.delete() }
