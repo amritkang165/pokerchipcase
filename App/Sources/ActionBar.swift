@@ -34,6 +34,7 @@ struct ActionBar: View {
                                 .overlay(Capsule().strokeBorder(theme.muted))
                                 .contentShape(Capsule())
                         }
+                        .accessibilityIdentifier("quickPick")
                     }
                 }
             }

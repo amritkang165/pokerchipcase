@@ -95,6 +95,7 @@ struct RoundTable: View {
                 // Inside the label, so it can never collide with a neighbour, a bet or the pot.
                 if seat.id == state.dealerID { dealerDisk }
                 Text(seat.name).fontWeight(seat.id == viewer ? .heavy : .regular).lineLimit(1)
+                    .accessibilityIdentifier("seatName")
             }
             HStack(spacing: 3) {
                 // One Text, so stack, delta and check mark shrink together instead of wrapping one by one.
@@ -103,6 +104,7 @@ struct RoundTable: View {
                 ((showsDelta ? deltaText : Text("\(seat.stack)")).monospacedDigit()
                     + Text(mark == .selected ? " ✓" : ""))
                     .bold().contentTransition(.numericText())
+                    .accessibilityIdentifier(showsDelta ? "seatDelta" : "seatStack")
                 // The hand is over, and the tag would squeeze the delta.
                 if seat.allIn, state.phase != .handComplete { tag("All-in") }
             }
@@ -110,7 +112,7 @@ struct RoundTable: View {
             if state.config.digitalCards, state.phase == .betting, seat.roundBet > 0 {
                 bet(seat.roundBet)
             } else if revealed(seat) {
-                CardsText(cards: seat.holeCards).font(.caption2)
+                CardsText(cards: seat.holeCards).font(.caption2).accessibilityIdentifier("seatCards")
             }
         }
         .font(.footnote)
@@ -177,8 +179,8 @@ struct RoundTable: View {
         // Each hand once, e.g. "Flush · Two pair" when a side pot went to another hand.
         let hands = winners.map(\.1.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         return VStack(spacing: 2) {
-            Text(hands.joined(separator: " · ")).font(.caption)
-            Text(winners.map(\.0.name).joined(separator: ", ")).font(.caption.bold())
+            Text(hands.joined(separator: " · ")).font(.caption).accessibilityIdentifier("winningHands")
+            Text(winners.map(\.0.name).joined(separator: ", ")).font(.caption.bold()).accessibilityIdentifier("winners")
         }
         .lineLimit(1).minimumScaleFactor(0.7)
         .foregroundStyle(theme.onTable)
@@ -191,6 +193,7 @@ struct RoundTable: View {
             if state.potTotal > 0 {
                 chips(3)
                 Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
+                    .accessibilityIdentifier("pot")
             }
             if state.pots.count > 1 {
                 Text(state.pots.indices.map { potName($0, of: state.pots.count) + " " + state.pots[$0].amount.formatted() }.joined(separator: " · "))
@@ -215,7 +218,10 @@ struct RoundTable: View {
     }
 
     private func bet(_ amount: Chips) -> some View {
-        HStack(spacing: 2) { chips(1); Text("\(amount)").monospacedDigit().contentTransition(.numericText()) }
+        HStack(spacing: 2) {
+            chips(1)
+            Text("\(amount)").monospacedDigit().contentTransition(.numericText()).accessibilityIdentifier("seatBet")
+        }
             .font(.caption2.bold())
     }
 
