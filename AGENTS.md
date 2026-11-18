@@ -15,6 +15,7 @@ Run the first four from the repo root before opening a PR; CI runs the same four
   brew install xcodegen
   xcodegen generate --spec App/project.yml
   xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
+  xcodebuild build-for-testing -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
   ```
 
 - UI tests (local only, not in CI; run before a PR that touches `App/`), after the app build's `xcodegen generate`:
