@@ -73,6 +73,12 @@ struct HostLobbyTests {
         #expect(heavy == "Player")
     }
 
+    @Test func newTableCutsTheHostNameLikeAGuestName() {
+        let long = String(repeating: "👨‍👩‍👧", count: 40)
+        let s = HostSnapshot.newTable(hostName: long, tableName: "T", config: .relaxed)
+        #expect(s.game.state.seats.first?.name == TableHost.seatName(long))
+    }
+
     @Test func longNameIsCutOnJoin() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)

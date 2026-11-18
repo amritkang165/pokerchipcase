@@ -29,7 +29,8 @@ struct TableSurface: View {
                 // Lit from a lamp above the middle, darker toward the cushion.
                 Circle()
                     .fill(RadialGradient(colors: theme.surface, center: UnitPoint(x: 0.5, y: 0.42),
-                                         startRadius: 0, endRadius: d * 0.5)
+                                         // The felt's own radius, so the felt darkens out to the cushion (#132).
+                                         startRadius: 0, endRadius: d * (0.5 - Self.rail - theme.cushionWidth))
                         .shadow(.inner(color: .black.opacity(0.4), radius: 0.03 * d)))
                     .padding((Self.rail + theme.cushionWidth) * d)
                 Circle().stroke(theme.line, lineWidth: 1.5).frame(width: 0.37 * d, height: 0.37 * d)

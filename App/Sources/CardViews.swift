@@ -180,6 +180,7 @@ struct CardsText: View {
     let cards: [Card]
     @AppStorage("fourColorDeck") private var fourColor = false
     @Environment(\.theme) private var theme
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         Text(attributed).accessibilityLabel(cards.spokenNames)
@@ -187,12 +188,14 @@ struct CardsText: View {
 
     private var attributed: AttributedString {
         var result = AttributedString()
+        // On a dark seat the cream card's inks reach about 3:1; Neon dark's card inks reach 6.5:1 or more (#134).
+        let inks = scheme == .dark ? ThemeName.neon.palette(for: .dark) : theme
         for (index, card) in cards.enumerated() {
             if index > 0 { result += AttributedString(" ") }
             var part = AttributedString(card.rankLabel + card.symbol)
             // Spades, and clubs in the two-color deck, keep the surrounding text color.
             if card.suit == .hearts || card.suit == .diamonds || fourColor && card.suit == .clubs {
-                part.foregroundColor = theme.suitColor(card.suit, fourColor: fourColor)
+                part.foregroundColor = inks.suitColor(card.suit, fourColor: fourColor)
             }
             result += part
         }

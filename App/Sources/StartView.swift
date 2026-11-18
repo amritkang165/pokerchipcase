@@ -32,7 +32,11 @@ struct StartView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section { TextField("Name", text: $playerName) } header: { Text("Your name").foregroundStyle(theme.muted) }
+                Section { TextField("Name", text: $playerName)
+                        .onChange(of: playerName) { _, new in
+                            if new.count > TableHost.maxNameLength { playerName = String(new.prefix(TableHost.maxNameLength)) }
+                        }
+                } header: { Text("Your name").foregroundStyle(theme.muted) }
                     .themedRow()
                 Section {
                     if let savedGame {
