@@ -4,7 +4,7 @@ iOS app that replaces the poker chip case for a home Texas Hold'em game, play mo
 
 ## Commands
 
-Run these from the repo root before opening a PR; CI runs the same four.
+Run the first four from the repo root before opening a PR; CI runs the same four. The UI tests are local only.
 
 - Lint (`brew install pre-commit`): `pre-commit run --all-files`. CI runs it in the `lint` job.
 - Package tests (macOS, no device needed): `swift test`
@@ -17,12 +17,20 @@ Run these from the repo root before opening a PR; CI runs the same four.
   xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
   ```
 
+- UI tests (local only, not in CI; run before a PR that touches `App/`), after the app build's `xcodegen generate`:
+
+  ```sh
+  xcrun simctl create "SE3 test" "iPhone SE (3rd generation)"  # once, if missing
+  xcodebuild test -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'platform=iOS Simulator,name=SE3 test' -derivedDataPath .build/uitests -resultBundlePath .build/uitests/UITests.xcresult -quiet
+  ```
+
 ## Layout
 
 - `Sources/PokerCore`: game rules, pots, commands, wire types.
 - `Sources/PokerNet`: networking.
 - `Sources/PokerSession`: session state and save file.
-- `App/Sources`: SwiftUI app. It has no unit tests and is tested manually in simulators.
+- `App/Sources`: SwiftUI app. It has no unit tests; `App/UITests` and manual checks in simulators cover it.
+- `App/UITests`: XCUITest, run locally in the simulator. XCTest, not Swift Testing: Swift Testing cannot drive UI.
 - `Sources/<Target>/<Target>.docc`: DocC catalogs.
 - `Tests/<Target>Tests`: Swift Testing, one test target per library.
 - `Sources/PokerNet/PokerNet.docc/Protocol.md`: the wire protocol. Update it in the same PR as any wire-format change.

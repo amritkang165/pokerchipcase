@@ -33,6 +33,7 @@ struct StartView: View {
         NavigationStack {
             Form {
                 Section { TextField("Name", text: $playerName)
+                        .accessibilityIdentifier("playerName")
                         .onChange(of: playerName) { _, new in
                             if new.count > TableHost.maxNameLength { playerName = String(new.prefix(TableHost.maxNameLength)) }
                         }
