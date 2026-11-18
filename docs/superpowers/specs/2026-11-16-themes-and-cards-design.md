@@ -17,7 +17,7 @@ This spec is stage 1 of four. Later stages, each with its own spec: animation (s
 
 The approved mockups, rendered from HTML. They are the target look; where this text and an image disagree on a color, the hex values here win, and where they disagree on proportions, the image wins.
 
-- `images/2026-11-16-themes.jpg`: the four themes, each light (left) and dark (right). Its labels are German: "Hell" is light, "Dunkel" is dark.
+- `images/2026-11-16-themes.jpg`: the four themes, each light (left) and dark (right).
 - `images/2026-11-16-cards.jpg`: five card faces and six card back patterns.
 
 The HTML sources are in `.superpowers/brainstorm/79585-1794858420/content/` (`themes-final.html`, `cards-final.html`), local and not committed.
