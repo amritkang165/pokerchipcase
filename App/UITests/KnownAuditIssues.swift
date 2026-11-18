@@ -29,7 +29,7 @@ enum KnownAuditIssues {
         KnownAuditIssue(type: .dynamicType, identifier: "discardGame", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyHeader", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyTable", issue: 147),
-        // Shown instead of the rows when no table is nearby; styled like the header.
+        // No run has shown it yet; it covers runs without nearby tables, where it replaces the rows.
         KnownAuditIssue(type: .dynamicType, identifier: "nearbySearching", issue: 147),
         // Table screens (contrast only, see SweepTests.tableAudit).
         KnownAuditIssue(type: .contrast, identifier: "seatName", issue: 148),
@@ -50,10 +50,12 @@ enum KnownAuditIssues {
     /// True when `issue`, found on `screen`, is a known finding, so the audit does not fail on it.
     @MainActor
     static func ignores(_ issue: XCUIAccessibilityAuditIssue, on screen: String) -> Bool {
-        // One snapshot reads the identifier in one query; issues often number in the dozens per screen.
-        guard let element = try? issue.element?.snapshot() else {
+        guard let element = issue.element else {
             return all.contains { $0.type == issue.auditType && $0.identifier == nil && $0.screen == screen }
         }
-        return all.contains { $0.type == issue.auditType && $0.identifier == element.identifier }
+        // One snapshot reads the identifier in one query; issues often number in the dozens per screen.
+        // An element whose snapshot fails is not ignored.
+        guard let snapshot = try? element.snapshot() else { return false }
+        return all.contains { $0.type == issue.auditType && $0.identifier == snapshot.identifier }
     }
 }

@@ -51,8 +51,8 @@ struct StartView: View {
                         Button("Discard", role: .destructive) { discard(SaveFile.host) }.accessibilityIdentifier("discardGame")
                     }
                     if let ticket {
-                        Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }.accessibilityIdentifier("rejoinSeat")
-                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }.accessibilityIdentifier("discardSeat")
+                        Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }
+                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }
                     }
                     Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
