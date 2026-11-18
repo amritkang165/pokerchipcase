@@ -24,9 +24,11 @@ extension XCUIApplication {
 }
 
 extension XCUIElement {
-    /// Deletes the current text value, if any.
+    /// Deletes the current text value, if any. Taps the trailing edge first so
+    /// the caret sits at the end, where delete keys remove text.
     func clearText() {
-        guard let value = value as? String, !value.isEmpty else { return }
+        guard let value = value as? String, !value.isEmpty, value != placeholderValue else { return }
+        coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count))
     }
 }
