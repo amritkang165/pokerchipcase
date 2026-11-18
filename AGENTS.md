@@ -15,6 +15,7 @@ Run the first four from the repo root before opening a PR; CI runs the same four
   brew install xcodegen
   xcodegen generate --spec App/project.yml
   xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
+  xcodebuild build-for-testing -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
   ```
 
 - UI tests (local only, not in CI; run before a PR that touches `App/`), after the app build's `xcodegen generate`:
@@ -22,8 +23,10 @@ Run the first four from the repo root before opening a PR; CI runs the same four
   ```sh
   rm -rf .build/uitests/UITests.xcresult
   xcrun simctl create "SE3 test" "iPhone SE (3rd generation)"  # once, if missing
-  xcodebuild test -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'platform=iOS Simulator,name=SE3 test' -derivedDataPath .build/uitests -resultBundlePath .build/uitests/UITests.xcresult -quiet
+  xcodebuild test -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'platform=iOS Simulator,name=SE3 test' -derivedDataPath .build/uitests -resultBundlePath .build/uitests/UITests.xcresult -maximum-parallel-testing-workers 3 -quiet
   ```
+
+  The tests run in parallel on clones of `SE3 test`; the debug tables of one clone show as nearby tables in another.
 
   Export the screenshots with `xcrun xcresulttool export attachments --path .build/uitests/UITests.xcresult --output-path .build/uitests/attachments`.
 
