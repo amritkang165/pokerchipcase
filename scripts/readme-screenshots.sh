@@ -27,7 +27,7 @@ shot() {
     seconds=$6
     xcrun simctl terminate "$SIM" "$APP_ID" 2>/dev/null || true
     xcrun simctl launch "$SIM" "$APP_ID" -debugTable -playerName Alex -debugStop "$stop" -theme "$theme" \
-        -appearance "$appearance" -digitalCards "$digital" >/dev/null
+        -appearance "$appearance" -digitalCards "$digital" -AppleLanguages "(en)" -AppleLocale en_US >/dev/null
     sleep "$seconds"
     xcrun simctl io "$SIM" screenshot "$RAW/$name.png" >/dev/null 2>&1
     # 600 points wide, 6 bits per channel: keeps each file under 500 KB. 256-color quantizing
